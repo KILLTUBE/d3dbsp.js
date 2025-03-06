@@ -50,99 +50,161 @@
     <table id="headerTable">
       <tr><th>Ident</th><td id="ident"></td></tr>
       <tr><th>Version</th><td id="version"></td></tr>
-      <tr><th>Lumps</th><td><table id="lumpsTable"><tr><th>Index</th><th>Name</th><th>Length</th><th>Offset</th></tr></table></td></tr>
+      <tr><th>Lumps</th><td>
+        <table id="lumpsTable">
+          <tr><th>Index</th><th>Name</th><th>Length</th><th>Offset</th></tr>
+        </table>
+      </td></tr>
     </table>
   </div>
   <div class="collapsible">Materials (First 10)</div>
   <div class="content">
-    <table id="materialsTable"><tr><th>Index</th><th>Material</th><th>Surface Flags</th><th>Content Flags</th></tr></table>
+    <table id="materialsTable">
+      <tr><th>Index</th><th>Material</th><th>Surface Flags</th><th>Content Flags</th></tr>
+    </table>
   </div>
   <div class="collapsible">Triangle Soups (First 10)</div>
   <div class="content">
-    <table id="triangleSoupsTable"><tr><th>Index</th><th>Material Index</th><th>Lightmap Index</th><th>First Vertex</th><th>Vertex Count</th><th>Index Count</th><th>First Index</th></tr></table>
+    <table id="triangleSoupsTable">
+      <tr>
+        <th>Index</th>
+        <th>Material Index</th>
+        <th>Lightmap Index</th>
+        <th>First Vertex</th>
+        <th>Vertex Count</th>
+        <th>Index Count</th>
+        <th>First Index</th>
+      </tr>
+    </table>
   </div>
   <div class="collapsible">Vertices (First 10)</div>
   <div class="content">
-    <table id="verticesTable"><tr><th>Index</th><th>Position X</th><th>Position Y</th><th>Position Z</th><th>Normal X</th><th>Normal Y</th><th>Normal Z</th></tr></table>
+    <table id="verticesTable">
+      <tr>
+        <th>Index</th>
+        <th>Position X</th>
+        <th>Position Y</th>
+        <th>Position Z</th>
+        <th>Normal X</th>
+        <th>Normal Y</th>
+        <th>Normal Z</th>
+      </tr>
+    </table>
   </div>
   <div class="collapsible">Draw Indexes (First 10)</div>
   <div class="content">
-    <table id="drawIndexesTable"><tr><th>Index</th><th>Offset</th></tr></table>
+    <table id="drawIndexesTable">
+      <tr><th>Index</th><th>Offset</th></tr>
+    </table>
   </div>
   <div class="collapsible">Brushes (First 10)</div>
   <div class="content">
-    <table id="brushesTable"><tr><th>Index</th><th>Num Sides</th><th>Material Num</th></tr></table>
+    <table id="brushesTable">
+      <tr><th>Index</th><th>Num Sides</th><th>Material Num</th></tr>
+    </table>
   </div>
   <div class="collapsible">Brush Sides (First 10)</div>
   <div class="content">
-    <table id="brushSidesTable"><tr><th>Index</th><th>Plane</th><th>Material Num</th></tr></table>
+    <table id="brushSidesTable">
+      <tr><th>Index</th><th>Plane</th><th>Material Num</th></tr>
+    </table>
   </div>
   <div class="collapsible">Planes (First 10)</div>
   <div class="content">
-    <table id="planesTable"><tr><th>Index</th><th>Normal X</th><th>Normal Y</th><th>Normal Z</th><th>Distance</th></tr></table>
+    <table id="planesTable">
+      <tr><th>Index</th><th>Normal X</th><th>Normal Y</th><th>Normal Z</th><th>Distance</th></tr>
+    </table>
   </div>
   <div class="collapsible">Models (First 10)</div>
   <div class="content">
-    <table id="modelsTable"><tr><th>Index</th><th>Mins X</th><th>Mins Y</th><th>Mins Z</th><th>Maxs X</th><th>Maxs Y</th><th>Maxs Z</th><th>First Triangle</th><th>Num Triangles</th></tr></table>
+    <table id="modelsTable">
+      <tr>
+        <th>Index</th>
+        <th>Mins X</th>
+        <th>Mins Y</th>
+        <th>Mins Z</th>
+        <th>Maxs X</th>
+        <th>Maxs Y</th>
+        <th>Maxs Z</th>
+        <th>First Triangle</th>
+        <th>Num Triangles</th>
+      </tr>
+    </table>
   </div>
-
   <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     // Struct Classes
     class Lump {
-      constructor(offset = 0, length = 0, name = '') {
-        this.offset = offset;
-        this.length = length;
-        this.name = name;
+      constructor(offset = 0, length = 0, name = '') { this.offset = offset; this.length = length; this.name = name; }
+      static read(view, offset) {
+        return new Lump(
+          view.getInt32(offset + 4, true),  // offset
+          view.getInt32(offset, true),      // length
+          ''                                // name not stored in file
+        );
       }
       write(view, offset) {
         view.setInt32(offset, this.length, true);
         view.setInt32(offset + 4, this.offset, true);
       }
+      static SIZE = 8;
     }
-
     class Header {
       constructor(ident = 'IBSP', version = 0, lumps = new Array(39).fill().map(() => new Lump())) {
-        this.ident = ident;
-        this.version = version;
-        this.lumps = lumps;
+        this.ident = ident; this.version = version; this.lumps = lumps;
+      }
+      static read(view, offset) {
+        let ident = '';
+        for (let i = 0; i < 4; i++) { ident += String.fromCharCode(view.getUint8(offset + i)); }
+        const version = view.getInt32(offset + 4, true);
+        const lumps = [];
+        for (let i = 0; i < 39; i++) {
+          lumps.push(Lump.read(view, offset + 8 + i * Lump.SIZE));
+        }
+        return new Header(ident, version, lumps);
       }
       write(view, offset) {
-        for (let i = 0; i < 4; i++) {
-          view.setUint8(offset + i, this.ident.charCodeAt(i) || 0);
-        }
+        for (let i = 0; i < 4; i++) { view.setUint8(offset + i, this.ident.charCodeAt(i) || 0); }
         view.setInt32(offset + 4, this.version, true);
-        for (let i = 0; i < this.lumps.length; i++) {
-          this.lumps[i].write(view, offset + 8 + i * 8);
-        }
+        for (let i = 0; i < this.lumps.length; i++) { this.lumps[i].write(view, offset + 8 + i * Lump.SIZE); }
       }
+      static SIZE = 8 + 39 * Lump.SIZE;
     }
-
     class Material {
-      constructor(material = '', surfaceFlags = 0, contentFlags = 0) {
-        this.material = material;
-        this.surfaceFlags = surfaceFlags;
-        this.contentFlags = contentFlags;
+      constructor(material = '', surfaceFlags = 0, contentFlags = 0) { this.material = material; this.surfaceFlags = surfaceFlags; this.contentFlags = contentFlags; }
+      static read(view, offset) {
+        let str = '';
+        for (let i = 0; i < 64; i++) {
+          const char = view.getUint8(offset + i);
+          if (char === 0) break;
+          str += String.fromCharCode(char);
+        }
+        const surfaceFlags = view.getUint32(offset + 64, true);
+        const contentFlags = view.getUint32(offset + 68, true);
+        return new Material(str, surfaceFlags, contentFlags);
       }
       write(view, offset) {
-        for (let i = 0; i < 64; i++) {
-          view.setUint8(offset + i, this.material.charCodeAt(i) || 0);
-        }
+        for (let i = 0; i < 64; i++) { view.setUint8(offset + i, this.material.charCodeAt(i) || 0); }
         view.setUint32(offset + 64, this.surfaceFlags, true);
         view.setUint32(offset + 68, this.contentFlags, true);
       }
+      static SIZE = 72;
     }
-
     class TriangleSoup {
-      constructor(materialIndex = 0, lightmapIndex = 0, firstVertex = 0, 
-                 vertexCount = 0, indexCount = 0, firstIndex = 0) {
-        this.materialIndex = materialIndex;
-        this.lightmapIndex = lightmapIndex;
-        this.firstVertex = firstVertex;
-        this.vertexCount = vertexCount;
-        this.indexCount = indexCount;
-        this.firstIndex = firstIndex;
+      constructor(materialIndex = 0, lightmapIndex = 0, firstVertex = 0, vertexCount = 0, indexCount = 0, firstIndex = 0) {
+        this.materialIndex = materialIndex; this.lightmapIndex = lightmapIndex; this.firstVertex = firstVertex;
+        this.vertexCount = vertexCount; this.indexCount = indexCount; this.firstIndex = firstIndex;
+      }
+      static read(view, offset) {
+        return new TriangleSoup(
+          view.getUint16(offset, true),
+          view.getUint16(offset + 2, true),
+          view.getUint32(offset + 4, true),
+          view.getUint16(offset + 8, true),
+          view.getUint16(offset + 10, true),
+          view.getUint32(offset + 12, true)
+        );
       }
       write(view, offset) {
         view.setUint16(offset, this.materialIndex, true);
@@ -152,13 +214,22 @@
         view.setUint16(offset + 10, this.indexCount, true);
         view.setUint32(offset + 12, this.firstIndex, true);
       }
+      static SIZE = 16;
     }
-
     class Vertex {
-      constructor(position = [0,0,0], normal = [0,0,0]) {
-        this.position = position;
-        this.normal = normal;
-        // Simplified - real d3dbsp vertex has more fields
+      constructor(position = [0,0,0], normal = [0,0,0]) { this.position = position; this.normal = normal; }
+      static read(view, offset) {
+        const pos = [
+          view.getFloat32(offset, true),
+          view.getFloat32(offset + 4, true),
+          view.getFloat32(offset + 8, true)
+        ];
+        const norm = [
+          view.getFloat32(offset + 12, true),
+          view.getFloat32(offset + 16, true),
+          view.getFloat32(offset + 20, true)
+        ];
+        return new Vertex(pos, norm);
       }
       write(view, offset) {
         view.setFloat32(offset, this.position[0], true);
@@ -167,40 +238,46 @@
         view.setFloat32(offset + 12, this.normal[0], true);
         view.setFloat32(offset + 16, this.normal[1], true);
         view.setFloat32(offset + 20, this.normal[2], true);
-        // Note: Full vertex is 68 bytes, this is simplified
-        // Fill remaining 48 bytes with zeros
-        for (let i = 24; i < 68; i++) {
-          view.setUint8(offset + i, 0);
-        }
+        for (let i = 24; i < 68; i++) { view.setUint8(offset + i, 0); }
       }
+      static SIZE = 68;
     }
-
     class Brush {
-      constructor(numSides = 0, materialNum = 0) {
-        this.numSides = numSides;
-        this.materialNum = materialNum;
+      constructor(numSides = 0, materialNum = 0) { this.numSides = numSides; this.materialNum = materialNum; }
+      static read(view, offset) {
+        const numSides = view.getUint16(offset, true);
+        const materialNum = view.getUint16(offset + 2, true);
+        return new Brush(numSides, materialNum);
       }
       write(view, offset) {
         view.setUint16(offset, this.numSides, true);
         view.setUint16(offset + 2, this.materialNum, true);
       }
+      static SIZE = 4;
     }
-
     class BrushSide {
-      constructor(plane = 0, materialNum = 0) {
-        this.plane = plane;
-        this.materialNum = materialNum;
+      constructor(plane = 0, materialNum = 0) { this.plane = plane; this.materialNum = materialNum; }
+      static read(view, offset) {
+        const plane = view.getInt32(offset, true);
+        const materialNum = view.getInt32(offset + 4, true);
+        return new BrushSide(plane, materialNum);
       }
       write(view, offset) {
         view.setInt32(offset, this.plane, true);
         view.setInt32(offset + 4, this.materialNum, true);
       }
+      static SIZE = 8;
     }
-
     class Plane {
-      constructor(normal = [0,0,0], dist = 0) {
-        this.normal = normal;
-        this.dist = dist;
+      constructor(normal = [0,0,0], dist = 0) { this.normal = normal; this.dist = dist; }
+      static read(view, offset) {
+        const normal = [
+          view.getFloat32(offset, true),
+          view.getFloat32(offset + 4, true),
+          view.getFloat32(offset + 8, true)
+        ];
+        const dist = view.getFloat32(offset + 12, true);
+        return new Plane(normal, dist);
       }
       write(view, offset) {
         view.setFloat32(offset, this.normal[0], true);
@@ -208,15 +285,26 @@
         view.setFloat32(offset + 8, this.normal[2], true);
         view.setFloat32(offset + 12, this.dist, true);
       }
+      static SIZE = 16;
     }
-
     class Model {
       constructor(mins = [0,0,0], maxs = [0,0,0], firstTriangle = 0, numTriangles = 0) {
-        this.mins = mins;
-        this.maxs = maxs;
-        this.firstTriangle = firstTriangle;
-        this.numTriangles = numTriangles;
-        // Simplified - real dmodel_t has more fields
+        this.mins = mins; this.maxs = maxs; this.firstTriangle = firstTriangle; this.numTriangles = numTriangles;
+      }
+      static read(view, offset) {
+        const mins = [
+          view.getFloat32(offset, true),
+          view.getFloat32(offset + 4, true),
+          view.getFloat32(offset + 8, true)
+        ];
+        const maxs = [
+          view.getFloat32(offset + 12, true),
+          view.getFloat32(offset + 16, true),
+          view.getFloat32(offset + 20, true)
+        ];
+        const firstTriangle = view.getUint32(offset + 24, true);
+        const numTriangles = view.getUint32(offset + 28, true);
+        return new Model(mins, maxs, firstTriangle, numTriangles);
       }
       write(view, offset) {
         view.setFloat32(offset, this.mins[0], true);
@@ -227,13 +315,11 @@
         view.setFloat32(offset + 20, this.maxs[2], true);
         view.setUint32(offset + 24, this.firstTriangle, true);
         view.setUint32(offset + 28, this.numTriangles, true);
-        // Fill remaining 20 bytes with zeros (48 byte total size)
-        for (let i = 32; i < 48; i++) {
-          view.setUint8(offset + i, 0);
-        }
+        for (let i = 32; i < 48; i++) { view.setUint8(offset + i, 0); }
       }
+      static SIZE = 48;
     }
-
+    // Parser and Other Classes
     class D3DBSPParser {
       constructor() {
         this.header = new Header();
@@ -246,7 +332,6 @@
         this.planes = [];
         this.models = [];
       }
-
       parse(buffer) {
         const view = new DataView(buffer);
         this.readHeader(view);
@@ -259,234 +344,134 @@
         this.readPlanes(view);
         this.readModels(view);
       }
-
-      readString(view, offset, length) {
-        let str = '';
-        for (let i = 0; i < length; i++) {
-          const char = view.getUint8(offset + i);
-          if (char === 0) break;
-          str += String.fromCharCode(char);
-        }
-        return str;
-      }
-
       readHeader(view) {
-        const ident = this.readString(view, 0, 4);
-        const version = view.getInt32(4, true);
-        const lumps = [];
-        for (let i = 0; i < 39; i++) {
-          const base = 8 + i * 8;
-          lumps.push(new Lump(
-            view.getInt32(base + 4, true),
-            view.getInt32(base, true),
-            lumpNames[i] || `Unknown_${i}`
-          ));
-        }
-        this.header = new Header(ident, version, lumps);
+        this.header = Header.read(view, 0);
+        // Set lump names from the known lumpNames array
+        this.header.lumps.forEach((lump, i) => {
+          lump.name = lumpNames[i] || `Unknown_${i}`;
+        });
       }
-
       readMaterials(view) {
         const lump = this.header.lumps[0];
         this.materials = [];
-        const count = lump.length / 72;
+        const count = lump.length / Material.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 72;
-          this.materials.push(new Material(
-            this.readString(view, base, 64),
-            view.getUint32(base + 64, true),
-            view.getUint32(base + 68, true)
-          ));
+          const base = lump.offset + i * Material.SIZE;
+          this.materials.push(Material.read(view, base));
         }
       }
-
       readTriangleSoups(view) {
         const lump = this.header.lumps[7];
         this.triangleSoups = [];
-        const count = lump.length / 16;
+        const count = lump.length / TriangleSoup.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 16;
-          this.triangleSoups.push(new TriangleSoup(
-            view.getUint16(base, true),
-            view.getUint16(base + 2, true),
-            view.getUint32(base + 4, true),
-            view.getUint16(base + 8, true),
-            view.getUint16(base + 10, true),
-            view.getUint32(base + 12, true)
-          ));
+          const base = lump.offset + i * TriangleSoup.SIZE;
+          this.triangleSoups.push(TriangleSoup.read(view, base));
         }
       }
-
       readVertices(view) {
         const lump = this.header.lumps[8];
         this.vertices = [];
-        const count = lump.length / 68;
+        const count = lump.length / Vertex.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 68;
-          this.vertices.push(new Vertex(
-            [
-              view.getFloat32(base, true),
-              view.getFloat32(base + 4, true),
-              view.getFloat32(base + 8, true)
-            ],
-            [
-              view.getFloat32(base + 12, true),
-              view.getFloat32(base + 16, true),
-              view.getFloat32(base + 20, true)
-            ]
-          ));
+          const base = lump.offset + i * Vertex.SIZE;
+          this.vertices.push(Vertex.read(view, base));
         }
       }
-
       readDrawIndexes(view) {
         const lump = this.header.lumps[9];
         this.drawIndexes = new Uint16Array(view.buffer, lump.offset, lump.length / 2);
       }
-
       readBrushes(view) {
         const lump = this.header.lumps[6];
         this.brushes = [];
-        const count = lump.length / 4;
+        const count = lump.length / Brush.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 4;
-          this.brushes.push(new Brush(
-            view.getUint16(base, true),
-            view.getUint16(base + 2, true)
-          ));
+          const base = lump.offset + i * Brush.SIZE;
+          this.brushes.push(Brush.read(view, base));
         }
       }
-
       readBrushSides(view) {
         const lump = this.header.lumps[5];
         this.brushSides = [];
-        const count = lump.length / 8;
+        const count = lump.length / BrushSide.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 8;
-          this.brushSides.push(new BrushSide(
-            view.getInt32(base, true),
-            view.getInt32(base + 4, true)
-          ));
+          const base = lump.offset + i * BrushSide.SIZE;
+          this.brushSides.push(BrushSide.read(view, base));
         }
       }
-
       readPlanes(view) {
         const lump = this.header.lumps[4];
         this.planes = [];
-        const count = lump.length / 16;
+        const count = lump.length / Plane.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 16;
-          this.planes.push(new Plane(
-            [
-              view.getFloat32(base, true),
-              view.getFloat32(base + 4, true),
-              view.getFloat32(base + 8, true)
-            ],
-            view.getFloat32(base + 12, true)
-          ));
+          const base = lump.offset + i * Plane.SIZE;
+          this.planes.push(Plane.read(view, base));
         }
       }
-
       readModels(view) {
         const lump = this.header.lumps[35];
         this.models = [];
-        const count = lump.length / 48;
+        const count = lump.length / Model.SIZE;
         for (let i = 0; i < count; i++) {
-          const base = lump.offset + i * 48;
-          this.models.push(new Model(
-            [
-              view.getFloat32(base, true),
-              view.getFloat32(base + 4, true),
-              view.getFloat32(base + 8, true)
-            ],
-            [
-              view.getFloat32(base + 12, true),
-              view.getFloat32(base + 16, true),
-              view.getFloat32(base + 20, true)
-            ],
-            view.getUint32(base + 24, true),
-            view.getUint32(base + 28, true)
-          ));
+          const base = lump.offset + i * Model.SIZE;
+          this.models.push(Model.read(view, base));
         }
       }
-
       write() {
-        // Calculate sizes
-        const headerSize = 8 + 39 * 8; // ident + version + 39 lumps
-        const materialsSize = this.materials.length * 72;
-        const triangleSoupsSize = this.triangleSoups.length * 16;
-        const verticesSize = this.vertices.length * 68;
+        const headerSize = Header.SIZE;
+        const materialsSize = this.materials.length * Material.SIZE;
+        const triangleSoupsSize = this.triangleSoups.length * TriangleSoup.SIZE;
+        const verticesSize = this.vertices.length * Vertex.SIZE;
         const drawIndexesSize = this.drawIndexes.length * 2;
-        const brushesSize = this.brushes.length * 4;
-        const brushSidesSize = this.brushSides.length * 8;
-        const planesSize = this.planes.length * 16;
-        const modelsSize = this.models.length * 48;
-
-        // Create buffer
-        const totalSize = headerSize + materialsSize + triangleSoupsSize + 
-                         verticesSize + drawIndexesSize + brushesSize + 
-                         brushSidesSize + planesSize + modelsSize;
+        const brushesSize = this.brushes.length * Brush.SIZE;
+        const brushSidesSize = this.brushSides.length * BrushSide.SIZE;
+        const planesSize = this.planes.length * Plane.SIZE;
+        const modelsSize = this.models.length * Model.SIZE;
+        const totalSize = headerSize + materialsSize + triangleSoupsSize +
+                          verticesSize + drawIndexesSize + brushesSize +
+                          brushSidesSize + planesSize + modelsSize;
         const buffer = new ArrayBuffer(totalSize);
         const view = new DataView(buffer);
-
-        // Write header (will rewrite with offsets later)
         let offset = 0;
         this.header.write(view, offset);
         offset = headerSize;
-
-        // Write materials
         this.header.lumps[0].offset = offset;
         this.header.lumps[0].length = materialsSize;
-        this.materials.forEach((m, i) => m.write(view, offset + i * 72));
+        this.materials.forEach((m, i) => m.write(view, offset + i * Material.SIZE));
         offset += materialsSize;
-
-        // Write planes
         this.header.lumps[4].offset = offset;
         this.header.lumps[4].length = planesSize;
-        this.planes.forEach((p, i) => p.write(view, offset + i * 16));
+        this.planes.forEach((p, i) => p.write(view, offset + i * Plane.SIZE));
         offset += planesSize;
-
-        // Write brush sides
         this.header.lumps[5].offset = offset;
         this.header.lumps[5].length = brushSidesSize;
-        this.brushSides.forEach((bs, i) => bs.write(view, offset + i * 8));
+        this.brushSides.forEach((bs, i) => bs.write(view, offset + i * BrushSide.SIZE));
         offset += brushSidesSize;
-
-        // Write brushes
         this.header.lumps[6].offset = offset;
         this.header.lumps[6].length = brushesSize;
-        this.brushes.forEach((b, i) => b.write(view, offset + i * 4));
+        this.brushes.forEach((b, i) => b.write(view, offset + i * Brush.SIZE));
         offset += brushesSize;
-
-        // Write triangle soups
         this.header.lumps[7].offset = offset;
         this.header.lumps[7].length = triangleSoupsSize;
-        this.triangleSoups.forEach((ts, i) => ts.write(view, offset + i * 16));
+        this.triangleSoups.forEach((ts, i) => ts.write(view, offset + i * TriangleSoup.SIZE));
         offset += triangleSoupsSize;
-
-        // Write vertices
         this.header.lumps[8].offset = offset;
         this.header.lumps[8].length = verticesSize;
-        this.vertices.forEach((v, i) => v.write(view, offset + i * 68));
+        this.vertices.forEach((v, i) => v.write(view, offset + i * Vertex.SIZE));
         offset += verticesSize;
-
-        // Write draw indexes
         this.header.lumps[9].offset = offset;
         this.header.lumps[9].length = drawIndexesSize;
         this.drawIndexes.forEach((idx, i) => view.setUint16(offset + i * 2, idx, true));
         offset += drawIndexesSize;
-
-        // Write models
         this.header.lumps[35].offset = offset;
         this.header.lumps[35].length = modelsSize;
-        this.models.forEach((m, i) => m.write(view, offset + i * 48));
+        this.models.forEach((m, i) => m.write(view, offset + i * Model.SIZE));
         offset += modelsSize;
-
-        // Rewrite header with updated offsets
         this.header.write(view, 0);
-
         return buffer;
       }
     }
-
     class Renderer {
       constructor(canvas) {
         this.scene = new THREE.Scene();
@@ -547,12 +532,9 @@
       }
       rotateBrushes(x, y, z) {
         const rotation = new THREE.Euler(x * Math.PI / 180, y * Math.PI / 180, z * Math.PI / 180);
-        this.scene.children.forEach(mesh => {
-          mesh.rotation.copy(rotation);
-        });
+        this.scene.children.forEach(mesh => { mesh.rotation.copy(rotation); });
       }
     }
-
     class D3DBSPViewer {
       constructor() {
         this.parser = new D3DBSPParser();
@@ -577,7 +559,6 @@
         this.setupCollapsibles();
         this.setupGenerateButton();
       }
-
       setupEventListeners() {
         this.dropzone.addEventListener('dragover', e => e.preventDefault());
         this.dropzone.addEventListener('drop', e => {
@@ -593,7 +574,6 @@
           reader.readAsArrayBuffer(file);
         });
       }
-
       setupCollapsibles() {
         const collapsibles = document.getElementsByClassName('collapsible');
         for (let i = 0; i < collapsibles.length; i++) {
@@ -604,7 +584,6 @@
           });
         }
       }
-
       setupGenerateButton() {
         const btn = document.getElementById('generateBtn');
         btn.addEventListener('click', () => {
@@ -618,7 +597,6 @@
           URL.revokeObjectURL(url);
         });
       }
-
       displayData() {
         this.displayHeader(this.parser.header);
         this.displayMaterials(this.parser.materials);
@@ -630,11 +608,10 @@
         this.displayPlanes(this.parser.planes);
         this.displayModels(this.parser.models);
       }
-
       displayHeader(header) {
         this.tables.header.ident.textContent = header.ident;
         this.tables.header.version.textContent = header.version;
-        while (this.tables.header.lumps.rows.length > 1) this.tables.header.lumps.deleteRow(1);
+        while (this.tables.header.lumps.rows.length > 1) { this.tables.header.lumps.deleteRow(1); }
         header.lumps.forEach((lump, i) => {
           const row = this.tables.header.lumps.insertRow();
           row.insertCell().textContent = i;
@@ -643,9 +620,8 @@
           row.insertCell().textContent = lump.offset;
         });
       }
-
       displayMaterials(materials) {
-        while (this.tables.materials.rows.length > 1) this.tables.materials.deleteRow(1);
+        while (this.tables.materials.rows.length > 1) { this.tables.materials.deleteRow(1); }
         materials.slice(0, 10).forEach((mat, i) => {
           const row = this.tables.materials.insertRow();
           row.insertCell().textContent = i;
@@ -654,9 +630,8 @@
           row.insertCell().textContent = mat.contentFlags;
         });
       }
-
       displayTriangleSoups(triangleSoups) {
-        while (this.tables.triangleSoups.rows.length > 1) this.tables.triangleSoups.deleteRow(1);
+        while (this.tables.triangleSoups.rows.length > 1) { this.tables.triangleSoups.deleteRow(1); }
         triangleSoups.slice(0, 10).forEach((soup, i) => {
           const row = this.tables.triangleSoups.insertRow();
           row.insertCell().textContent = i;
@@ -668,9 +643,8 @@
           row.insertCell().textContent = soup.firstIndex;
         });
       }
-
       displayVertices(vertices) {
-        while (this.tables.vertices.rows.length > 1) this.tables.vertices.deleteRow(1);
+        while (this.tables.vertices.rows.length > 1) { this.tables.vertices.deleteRow(1); }
         vertices.slice(0, 10).forEach((vertex, i) => {
           const row = this.tables.vertices.insertRow();
           row.insertCell().textContent = i;
@@ -682,18 +656,16 @@
           row.insertCell().textContent = vertex.normal[2].toFixed(2);
         });
       }
-
       displayDrawIndexes(drawIndexes) {
-        while (this.tables.drawIndexes.rows.length > 1) this.tables.drawIndexes.deleteRow(1);
+        while (this.tables.drawIndexes.rows.length > 1) { this.tables.drawIndexes.deleteRow(1); }
         drawIndexes.slice(0, 10).forEach((offset, i) => {
           const row = this.tables.drawIndexes.insertRow();
           row.insertCell().textContent = i;
           row.insertCell().textContent = offset;
         });
       }
-
       displayBrushes(brushes) {
-        while (this.tables.brushes.rows.length > 1) this.tables.brushes.deleteRow(1);
+        while (this.tables.brushes.rows.length > 1) { this.tables.brushes.deleteRow(1); }
         brushes.slice(0, 10).forEach((brush, i) => {
           const row = this.tables.brushes.insertRow();
           row.insertCell().textContent = i;
@@ -701,9 +673,8 @@
           row.insertCell().textContent = brush.materialNum;
         });
       }
-
       displayBrushSides(brushSides) {
-        while (this.tables.brushSides.rows.length > 1) this.tables.brushSides.deleteRow(1);
+        while (this.tables.brushSides.rows.length > 1) { this.tables.brushSides.deleteRow(1); }
         brushSides.slice(0, 10).forEach((side, i) => {
           const row = this.tables.brushSides.insertRow();
           row.insertCell().textContent = i;
@@ -711,9 +682,8 @@
           row.insertCell().textContent = side.materialNum;
         });
       }
-
       displayPlanes(planes) {
-        while (this.tables.planes.rows.length > 1) this.tables.planes.deleteRow(1);
+        while (this.tables.planes.rows.length > 1) { this.tables.planes.deleteRow(1); }
         planes.slice(0, 10).forEach((plane, i) => {
           const row = this.tables.planes.insertRow();
           row.insertCell().textContent = i;
@@ -723,9 +693,8 @@
           row.insertCell().textContent = plane.dist.toFixed(2);
         });
       }
-
       displayModels(models) {
-        while (this.tables.models.rows.length > 1) this.tables.models.deleteRow(1);
+        while (this.tables.models.rows.length > 1) { this.tables.models.deleteRow(1); }
         models.slice(0, 10).forEach((model, i) => {
           const row = this.tables.models.insertRow();
           row.insertCell().textContent = i;
@@ -740,7 +709,6 @@
         });
       }
     }
-
     const lumpNames = [
       "materials", "lightmaps", "light grid hash", "light grid values", "planes",
       "brushsides", "brushes", "trianglesoups", "drawverts", "drawindexes",
@@ -752,7 +720,6 @@
       "collisionborders", "collisionparts", "collisionaabbs", "models",
       "visibility", "entdata", "paths"
     ];
-
     const viewer = new D3DBSPViewer();
     window.viewer = viewer;
   </script>
