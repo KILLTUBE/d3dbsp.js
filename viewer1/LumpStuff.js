@@ -36,7 +36,7 @@ function writeVec4(view, offset, vec) {
   view.setFloat32(offset + 12, vec[3], true);
 }
 class Lump {
-  constructor(offset = 0, length = 0, name = '') {
+  constructor(offset, length, name) {
     this.offset = offset;
     this.length = length;
     this.name = name;
@@ -54,7 +54,7 @@ class Lump {
   static SIZE = 8;
 }
 class Header {
-  constructor(ident = 'IBSP', version = 0, lumps = new Array(39).fill().map(() => new Lump())) {
+  constructor(ident, version, lumps) {
     this.ident = ident;
     this.version = version;
     this.lumps = lumps;
@@ -84,7 +84,7 @@ class Header {
   static SIZE = 8 + 39 * Lump.SIZE; // 320 bytes
 }
 class Material {
-  constructor(material = '', surfaceFlags = 0, contentFlags = 0) {
+  constructor(material, surfaceFlags, contentFlags) {
     this.material = material;
     this.surfaceFlags = surfaceFlags;
     this.contentFlags = contentFlags;
@@ -110,7 +110,7 @@ class Material {
   static SIZE = 72; // char[64] + 4 + 4
 }
 class DiskGfxLightmap {
-  constructor(r = new Uint8Array(512 * 512 * 4), g = new Uint8Array(512 * 512 * 4), b = new Uint8Array(512 * 512 * 4), shadowMap = new Uint8Array(1024 * 1024)) {
+  constructor(r, g, b, shadowMap) {
     this.r = r;
     this.g = g;
     this.b = b;
@@ -132,7 +132,7 @@ class DiskGfxLightmap {
   static SIZE = 3 * 512 * 512 * 4 + 1024 * 1024; // 4194304 bytes
 }
 class Plane {
-  constructor(normal = [0, 0, 0], dist = 0) {
+  constructor(normal, dist) {
     this.normal = normal;
     this.dist = dist;
   }
@@ -166,7 +166,7 @@ class BrushSide {
   static SIZE = 8; // 4 + 4
 }
 class Brush {
-  constructor(numSides = 0, materialNum = 0) {
+  constructor(numSides, materialNum) {
     this.numSides = numSides;
     this.materialNum = materialNum;
   }
@@ -182,7 +182,7 @@ class Brush {
   static SIZE = 4; // 2 + 2
 }
 class TriangleSoup {
-  constructor(materialIndex = 0, lightmapIndex = 0, firstVertex = 0, vertexCount = 0, indexCount = 0, firstIndex = 0) {
+  constructor(materialIndex, lightmapIndex, firstVertex, vertexCount, indexCount, firstIndex) {
     this.materialIndex = materialIndex;
     this.lightmapIndex = lightmapIndex;
     this.firstVertex = firstVertex;
@@ -210,7 +210,7 @@ class TriangleSoup {
   static SIZE = 16; // 2 + 2 + 4 + 2 + 2 + 4
 }
 class Vertex {
-  constructor(xyz = [0, 0, 0], normal = [0, 0, 0], color = 0, texCoord = [0, 0], lmapCoord = [0, 0], tangent = [0, 0, 0], binormal = [0, 0, 0]) {
+  constructor(xyz, normal, color, texCoord, lmapCoord, tangent, binormal) {
     this.xyz = xyz;
     this.normal = normal;
     this.color = color;
@@ -241,7 +241,7 @@ class Vertex {
   static SIZE = 68; // 12 + 12 + 4 + 8 + 8 + 12 + 12
 }
 class DiskGfxCullGroup {
-  constructor(mins = [0, 0, 0], maxs = [0, 0, 0], firstSurface = 0, surfaceCount = 0) {
+  constructor(mins, maxs, firstSurface, surfaceCount) {
     this.mins = mins;
     this.maxs = maxs;
     this.firstSurface = firstSurface;
@@ -263,7 +263,7 @@ class DiskGfxCullGroup {
   static SIZE = 32; // 12 + 12 + 4 + 4
 }
 class DiskGfxPortalVertex {
-  constructor(xyz = [0, 0, 0]) {
+  constructor(xyz) {
     this.xyz = xyz;
   }
   static read(view, offset) {
@@ -276,7 +276,7 @@ class DiskGfxPortalVertex {
   static SIZE = 12; // 12
 }
 class DiskGfxAabbTree {
-  constructor(firstSurface = 0, surfaceCount = 0, childCount = 0) {
+  constructor(firstSurface, surfaceCount, childCount) {
     this.firstSurface = firstSurface;
     this.surfaceCount = surfaceCount;
     this.childCount = childCount;
@@ -295,7 +295,7 @@ class DiskGfxAabbTree {
   static SIZE = 12; // 4 + 4 + 4
 }
 class DiskGfxCell {
-  constructor(mins = [0, 0, 0], maxs = [0, 0, 0], aabbTreeIndex = 0, firstPortal = 0, portalCount = 0, firstCullGroup = 0, cullGroupCount = 0, firstOccluder = 0, occluderCount = 0) {
+  constructor(mins, maxs, aabbTreeIndex, firstPortal, portalCount, firstCullGroup, cullGroupCount, firstOccluder, occluderCount) {
     this.mins = mins;
     this.maxs = maxs;
     this.aabbTreeIndex = aabbTreeIndex;
@@ -332,7 +332,7 @@ class DiskGfxCell {
   static SIZE = 52; // 12 + 12 + 4 * 7
 }
 class DiskGfxPortal {
-  constructor(planeIndex = 0, cellIndex = 0, firstPortalVertex = 0, portalVertexCount = 0) {
+  constructor(planeIndex, cellIndex, firstPortalVertex, portalVertexCount) {
     this.planeIndex = planeIndex;
     this.cellIndex = cellIndex;
     this.firstPortalVertex = firstPortalVertex;
@@ -354,7 +354,7 @@ class DiskGfxPortal {
   static SIZE = 16; // 4 + 4 + 4 + 4
 }
 class DNode {
-  constructor(planeNum = 0, children = [0, 0], mins = [0, 0, 0], maxs = [0, 0, 0]) {
+  constructor(planeNum, children, mins, maxs) {
     this.planeNum = planeNum;
     this.children = children;
     this.mins = mins;
@@ -392,7 +392,7 @@ class DNode {
   static SIZE = 36; // 4 + 8 + 12 + 12
 }
 class DLeaf {
-  constructor(cluster = 0, area = 0, firstLeafSurface = 0, numLeafSurfaces = 0, firstLeafBrush = 0, numLeafBrushes = 0, cellNum = 0, firstLightIndex = 0, numLights = 0) {
+  constructor(cluster, area, firstLeafSurface, numLeafSurfaces, firstLeafBrush, numLeafBrushes, cellNum, firstLightIndex, numLights) {
     this.cluster = cluster;
     this.area = area;
     this.firstLeafSurface = firstLeafSurface;
@@ -429,7 +429,7 @@ class DLeaf {
   static SIZE = 36; // 4 * 9
 }
 class DLeafBrush {
-  constructor(brush = 0) {
+  constructor(brush) {
     this.brush = brush;
   }
   static read(view, offset) {
@@ -442,7 +442,7 @@ class DLeafBrush {
   static SIZE = 4; // 4
 }
 class DLeafFace {
-  constructor(face = 0) {
+  constructor(face) {
     this.face = face;
   }
   static read(view, offset) {
@@ -455,7 +455,7 @@ class DLeafFace {
   static SIZE = 4; // 4
 }
 class DiskCollisionVertex {
-  constructor(checkStamp = 0, xyz = [0, 0, 0]) {
+  constructor(checkStamp, xyz) {
     this.checkStamp = checkStamp;
     this.xyz = xyz;
   }
@@ -471,7 +471,7 @@ class DiskCollisionVertex {
   static SIZE = 16; // 4 + 12
 }
 class DiskCollisionEdge {
-  constructor(checkStamp = 0, origin = [0, 0, 0], axis = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], length = 0) {
+  constructor(checkStamp, origin, axis, length) {
     this.checkStamp = checkStamp;
     this.origin = origin;
     this.axis = axis;
@@ -499,7 +499,7 @@ class DiskCollisionEdge {
   static SIZE = 56; // 4 + 12 + 36 + 4
 }
 class DiskCollisionTriangle {
-  constructor(plane = [0, 0, 0, 0], svec = [0, 0, 0, 0], tvec = [0, 0, 0, 0], vertIndices = [0, 0, 0], edgeIndices = [0, 0, 0]) {
+  constructor(plane, svec, tvec, vertIndices, edgeIndices) {
     this.plane = plane;
     this.svec = svec;
     this.tvec = tvec;
@@ -536,7 +536,7 @@ class DiskCollisionTriangle {
   static SIZE = 72; // 16 + 16 + 16 + 12 + 12
 }
 class DiskCollisionBorder {
-  constructor(distEq = [0, 0, 0], zBase = 0, zSlope = 0, start = 0, length = 0) {
+  constructor(distEq, zBase, zSlope, start, length) {
     this.distEq = distEq;
     this.zBase = zBase;
     this.zSlope = zSlope;
@@ -561,7 +561,7 @@ class DiskCollisionBorder {
   static SIZE = 28; // 12 + 4 + 4 + 4 + 4
 }
 class DiskCollisionPartition {
-  constructor(checkStamp = 0, triCount = 0, borderCount = 0, firstTriIndex = 0, firstBorderIndex = 0) {
+  constructor(checkStamp, triCount, borderCount, firstTriIndex, firstBorderIndex) {
     this.checkStamp = checkStamp;
     this.triCount = triCount;
     this.borderCount = borderCount;
@@ -586,7 +586,7 @@ class DiskCollisionPartition {
   static SIZE = 12; // 2 + 1 + 1 + 4 + 4
 }
 class DiskCollisionAabbTree {
-  constructor(origin = [0, 0, 0], halfSize = [0, 0, 0], materialIndex = 0, childCount = 0, u = 0) {
+  constructor(origin, halfSize, materialIndex, childCount, u) {
     this.origin = origin;
     this.halfSize = halfSize;
     this.materialIndex = materialIndex;
@@ -613,25 +613,16 @@ class DiskCollisionAabbTree {
 class Model {
   /**
    * Constructs a Model instance with all fields from dmodel_t.
-   * @param {number[]} mins - Minimum bounds (x, y, z) [default: [0, 0, 0]]
-   * @param {number[]} maxs - Maximum bounds (x, y, z) [default: [0, 0, 0]]
-   * @param {number} firstTriangle - Index of the first triangle [default: 0]
-   * @param {number} numTriangles - Number of triangles [default: 0]
-   * @param {number} firstSurface - Index of the first surface [default: 0]
-   * @param {number} numSurfaces - Number of surfaces [default: 0]
-   * @param {number} firstBrush - Index of the first brush [default: 0]
-   * @param {number} numBrushes - Number of brushes [default: 0]
+   * @param {number[]} mins - Minimum bounds (x, y, z)
+   * @param {number[]} maxs - Maximum bounds (x, y, z)
+   * @param {number} firstTriangle - Index of the first triangle
+   * @param {number} numTriangles - Number of triangles
+   * @param {number} firstSurface - Index of the first surface
+   * @param {number} numSurfaces - Number of surfaces
+   * @param {number} firstBrush - Index of the first brush
+   * @param {number} numBrushes - Number of brushes
    */
-  constructor(
-    mins = [0, 0, 0],
-    maxs = [0, 0, 0],
-    firstTriangle = 0,
-    numTriangles = 0,
-    firstSurface = 0,
-    numSurfaces = 0,
-    firstBrush = 0,
-    numBrushes = 0
-  ) {
+  constructor(mins, maxs, firstTriangle, numTriangles, firstSurface, numSurfaces, firstBrush, numBrushes) {
     this.mins = mins;
     this.maxs = maxs;
     this.firstTriangle = firstTriangle;
