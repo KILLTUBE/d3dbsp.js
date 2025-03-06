@@ -188,13 +188,14 @@ class D3DBSPViewer {
   displayBrushSides(brushSides) {
       const table = this.tables.brushSides
       while (table.rows.length > 1) {
-          table.deleteRow(1)
+          table.deleteRow(1);
       }
       brushSides.slice(0, 10).forEach((side, i) => {
-          const row = table.insertRow()
-          row.insertCell().textContent = i
-          row.insertCell().textContent = side.plane
-          row.insertCell().textContent = side.materialNum
+          const row = table.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = side.distance;
+          row.insertCell().textContent = side.plane;
+          row.insertCell().textContent = side.materialNum;
       })
   }
 

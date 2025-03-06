@@ -104,7 +104,8 @@ class D3DBSPParser {
       const lump = this.header.lumps[5]
       this.brushSides = []
       if (lump.length > 0) {
-          const count = lump.length / BrushSide.SIZE
+          const count = lump.length / BrushSide.SIZE;
+          // console.log("count", count);
           for (let i = 0; i < count; i++) {
               this.brushSides.push(BrushSide.read(view, lump.offset + i * BrushSide.SIZE))
           }

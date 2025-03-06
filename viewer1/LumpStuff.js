@@ -115,20 +115,38 @@ class Plane {
   static SIZE = 16 // 12 + 4
 }
 class BrushSide {
-  constructor(plane = 0, materialNum = 0) {
-    this.plane = plane
-    this.materialNum = materialNum
+  //constructor(union, texture) {
+  constructor(distance, plane, materialNum) {
+    //this.union = union; // Object: { type: 'distance' | 'plane', value: number }
+    this.distance = distance; // float
+    this.plane = plane; // unsigned int
+    this.materialNum = materialNum; // unsigned int
   }
-  static read(view, offset) {
-    const plane = view.getInt32(offset, true)
-    const materialNum = view.getInt32(offset + 4, true)
-    return new BrushSide(plane, materialNum)
+  static read(view, offset, isFirstSix) {
+    const distance = view.getFloat32(offset, true); // Read as float for first 6
+    const plane = view.getUint32(offset, true); // Read as uint32 for rest
+    //let union;
+    //if (isFirstSix) {
+    //  const distance = view.getFloat32(offset, true); // Read as float for first 6
+    //  union = { type: 'distance', value: distance };
+    //} else {
+    //  const plane = view.getUint32(offset, true); // Read as uint32 for rest
+    //  union = { type: 'plane', value: plane };
+    //}
+    const materialNum = view.getUint32(offset + 4, true); // materialNum is always uint32
+    //return new BrushSide(union, texture);
+    return new BrushSide(distance, plane, materialNum);
   }
   write(view, offset) {
-    view.setInt32(offset, this.plane, true)
-    view.setInt32(offset + 4, this.materialNum, true)
+    //if (this.union.type === 'distance') {
+    //  view.setFloat32(offset, this.union.value, true); // Write as float
+    //} else {
+      view.setUint32(offset, this.union.value, true); // Write as uint32
+    //}
+    view.setUint32(offset + 4, this.materialNum, true);
   }
-  static SIZE = 8 // 4 + 4
+
+  static SIZE = 8; // 4 bytes for union (float or uint32) + 4 bytes for texture
 }
 class Brush {
   constructor(numSides = 0, materialNum = 0) {
