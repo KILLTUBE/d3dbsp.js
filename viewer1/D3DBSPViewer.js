@@ -85,34 +85,101 @@ class D3DBSPViewer {
   }
 
   displayData() {
-      this.displayLumpsOverview()
-      this.displayHeader(this.parser.header)
-      this.displayMaterials(this.parser.materials)
-      this.displayLightbytes(this.parser.lightbytes)
-      this.displayPlanes(this.parser.planes)
-      this.displayBrushSides(this.parser.brushSides)
-      this.displayBrushes(this.parser.brushes)
-      this.displayTriangleSoups(this.parser.triangleSoups)
-      this.displayVertices(this.parser.vertices)
-      this.displayDrawIndexes(this.parser.drawIndexes)
-      this.displayCullGroups(this.parser.cullGroups)
-      this.displayPortalVerts(this.parser.portalVerts)
-      this.displayAabbTrees(this.parser.aabbTrees)
-      this.displayCells(this.parser.cells)
-      this.displayPortals(this.parser.portals)
-      this.displayNodes(this.parser.nodes)
-      this.displayLeafs(this.parser.leafs)
-      this.displayLeafBrushes(this.parser.leafBrushes)
-      this.displayLeafSurfaces(this.parser.leafSurfaces)
-      this.displayCollisionVerts(this.parser.collisionVerts)
-      this.displayCollisionEdges(this.parser.collisionEdges)
-      this.displayCollisionTris(this.parser.collisionTris)
-      this.displayCollisionBorders(this.parser.collisionBorders)
-      this.displayCollisionPartitions(this.parser.collisionPartitions)
-      this.displayCollisionAabbs(this.parser.collisionAabbs)
-      this.displayModels(this.parser.models)
-      this.displayVisibility(this.parser.visibility)
-      this.displayEntities(this.parser.entities)
+      this.displayLumpsOverview();
+      this.displayHeader(this.parser.header);
+      this.displayMaterials(this.parser.materials);
+      this.displayLightbytes(this.parser.lightbytes);
+      this.displayPlanes(this.parser.planes);
+      this.displayBrushSides(this.parser.brushSides);
+      this.displayBrushes(this.parser.brushes);
+      this.displayTriangleSoups(this.parser.triangleSoups);
+      this.displayVertices(this.parser.vertices);
+      this.displayDrawIndexes(this.parser.drawIndexes);
+      this.displayCullGroups(this.parser.cullGroups);
+      this.displayPortalVerts(this.parser.portalVerts);
+      this.displayAabbTrees(this.parser.aabbTrees);
+      this.displayCells(this.parser.cells);
+      this.displayPortals(this.parser.portals);
+      this.displayNodes(this.parser.nodes);
+      this.displayLeafs(this.parser.leafs);
+      this.displayLeafBrushes(this.parser.leafBrushes);
+      this.displayLeafSurfaces(this.parser.leafSurfaces);
+      this.displayCollisionVerts(this.parser.collisionVerts);
+      this.displayCollisionEdges(this.parser.collisionEdges);
+      this.displayCollisionTris(this.parser.collisionTris);
+      this.displayCollisionBorders(this.parser.collisionBorders);
+      this.displayCollisionPartitions(this.parser.collisionPartitions);
+      this.displayCollisionAabbs(this.parser.collisionAabbs);
+      this.displayModels(this.parser.models);
+      this.displayVisibility(this.parser.visibility);
+      this.displayEntities(this.parser.entities);
+      this.displayLightmaps();
+  }
+
+  // Display lightmaps as canvases
+  displayLightmaps() {
+      const container = document.getElementById('lightmapsContainer');
+      container.innerHTML = ''; // Clear previous content
+
+      if (this.parser.lightbytes.length === 0) {
+          container.textContent = 'No lightmaps available.';
+          return;
+      }
+
+      for (const lightmap of this.parser.lightbytes) {
+
+        // Helper function to create a canvas from Uint8Array data
+        const createCanvas = (data, width, height, isGrayscale = false) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(width, height);
+
+            if (isGrayscale) {
+                // Convert grayscale to RGBA
+                for (let i = 0; i < data.length; i++) {
+                    const value = data[i];
+                    const offset = i * 4;
+                    imageData.data[offset] = value;     // R
+                    imageData.data[offset + 1] = value; // G
+                    imageData.data[offset + 2] = value; // B
+                    imageData.data[offset + 3] = 255;   // A
+                }
+            } else {
+                // Use RGBA data directly
+                imageData.data.set(data);
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            return canvas;
+        };
+
+        // Create canvases for r, g, b, and shadowMap
+        const rCanvas = createCanvas(lightmap.r, 512, 512);
+        const gCanvas = createCanvas(lightmap.g, 512, 512);
+        const bCanvas = createCanvas(lightmap.b, 512, 512);
+        const shadowCanvas = createCanvas(lightmap.shadowMap, 1024, 1024, true);
+
+        // Style canvases (optional)
+        [rCanvas, gCanvas, bCanvas, shadowCanvas].forEach(canvas => {
+            canvas.style.margin = '10px';
+            canvas.style.border = '1px solid #ccc';
+        });
+
+        // Append canvases with labels
+        container.appendChild(document.createTextNode('Lightmap R: '));
+        container.appendChild(rCanvas);
+        container.appendChild(document.createElement('br'));
+        container.appendChild(document.createTextNode('Lightmap G: '));
+        container.appendChild(gCanvas);
+        container.appendChild(document.createElement('br'));
+        container.appendChild(document.createTextNode('Lightmap B: '));
+        container.appendChild(bCanvas);
+        container.appendChild(document.createElement('br'));
+        container.appendChild(document.createTextNode('Shadow Map: '));
+        container.appendChild(shadowCanvas);
+      }
   }
 
   displayLumpsOverview() {
