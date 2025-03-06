@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>d3dbsp Viewer (Rotatable Brushes)</title>
+  <style>
+    #dropzone {
+        width: 200px;
+        height: 100px;
+        border: 2px dashed #ccc;
+        text-align: center;
+        line-height: 100px;
+        margin: 10px;
+    }
+    #canvas {
+        width: 640px;
+        height: 480px;
+        border: 1px solid #000;
+    }
+    table {
+        border-collapse: collapse;
+        margin: 10px 0;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 5px;
+    }
+    button {
+        margin: 5px;
+        padding: 5px 10px;
+    }
+    h2 {
+        margin: 10px 0 0 10px;
+    }
+    #lumpFilter {
+        margin: 10px;
+        padding: 5px;
+        width: 200px;
+    }
+    pre {
+        margin: 10px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+</style>
+</head>
+<body>
+  <div id="dropzone">Drop d3dbsp file here</div>
+  <canvas id="canvas"></canvas>
+  <button id="generateBtn">Generate .d3dbsp binary</button>
+  <input type="text" id="lumpFilter" placeholder="Filter lumps...">
+  <h2>Lumps</h2>
+  <table id="lumpsTable">
+    <tr>
+      <th>Name</th>
+      <th>Offset</th>
+      <th>Length</th>
+      <th>Action</th>
+    </tr>
+  </table>
+  <h2 id="headerHeading">Header</h2>
+  <table id="headerTable">
+    <tr>
+      <th>Field</th>
+      <th>Value</th>
+    </tr>
+    <tr>
+      <th>Ident</th>
+      <td id="ident"></td>
+    </tr>
+    <tr>
+      <th>Version</th>
+      <td id="version"></td>
+    </tr>
+  </table>
+  <h2 id="materialsHeading">Materials</h2>
+  <table id="materialsTable">
+    <tr>
+      <th>Index</th>
+      <th>Material</th>
+      <th>Surface Flags</th>
+      <th>Content Flags</th>
+    </tr>
+  </table>
+  <h2 id="lightmapsHeading">Lightmaps</h2>
+  <table id="lightbytesTable">
+    <tr>
+      <th>Index</th>
+      <th>Summary</th>
+    </tr>
+  </table>
+  <h2 id="planesHeading">Planes</h2>
+  <table id="planesTable">
+    <tr>
+      <th>Index</th>
+      <th>Normal X</th>
+      <th>Normal Y</th>
+      <th>Normal Z</th>
+      <th>Distance</th>
+    </tr>
+  </table>
+  <h2 id="brushsidesHeading">Brushsides</h2>
+  <table id="brushSidesTable">
+    <tr>
+      <th>Index</th>
+      <th>Plane</th>
+      <th>Material Num</th>
+    </tr>
+  </table>
+  <h2 id="brushesHeading">Brushes</h2>
+  <table id="brushesTable">
+    <tr>
+      <th>Index</th>
+      <th>Num Sides</th>
+      <th>Material Num</th>
+    </tr>
+  </table>
+  <h2 id="trianglesoupsHeading">Trianglesoups</h2>
+  <table id="triangleSoupsTable">
+    <tr>
+      <th>Index</th>
+      <th>Material Index</th>
+      <th>Lightmap Index</th>
+      <th>First Vertex</th>
+      <th>Vertex Count</th>
+      <th>Index Count</th>
+      <th>First Index</th>
+    </tr>
+  </table>
+  <h2 id="drawvertsHeading">Drawverts</h2>
+  <table id="verticesTable">
+    <tr>
+      <th>Index</th>
+      <th>X</th>
+      <th>Y</th>
+      <th>Z</th>
+      <th>Normal X</th>
+      <th>Normal Y</th>
+      <th>Normal Z</th>
+    </tr>
+  </table>
+  <h2 id="drawindexesHeading">Drawindexes</h2>
+  <table id="drawIndexesTable">
+    <tr>
+      <th>Index</th>
+      <th>Value</th>
+    </tr>
+  </table>
+  <h2 id="cullgroupsHeading">Cullgroups</h2>
+  <table id="cullGroupsTable">
+    <tr>
+      <th>Index</th>
+      <th>Mins</th>
+      <th>Maxs</th>
+      <th>First Surface</th>
+      <th>Surface Count</th>
+    </tr>
+  </table>
+  <h2 id="portalvertsHeading">Portalverts</h2>
+  <table id="portalVertsTable">
+    <tr>
+      <th>Index</th>
+      <th>XYZ</th>
+    </tr>
+  </table>
+  <h2 id="aabbtreesHeading">Aabbtrees</h2>
+  <table id="aabbTreesTable">
+    <tr>
+      <th>Index</th>
+      <th>First Surface</th>
+      <th>Surface Count</th>
+      <th>Child Count</th>
+    </tr>
+  </table>
+  <h2 id="cellsHeading">Cells</h2>
+  <table id="cellsTable">
+    <tr>
+      <th>Index</th>
+      <th>Mins</th>
+      <th>Maxs</th>
+      <th>AABB Tree Index</th>
+      <th>First Portal</th>
+      <th>Portal Count</th>
+    </tr>
+  </table>
+  <h2 id="portalsHeading">Portals</h2>
+  <table id="portalsTable">
+    <tr>
+      <th>Index</th>
+      <th>Plane Index</th>
+      <th>Cell Index</th>
+      <th>First Portal Vertex</th>
+      <th>Portal Vertex Count</th>
+    </tr>
+  </table>
+  <h2 id="nodesHeading">Nodes</h2>
+  <table id="nodesTable">
+    <tr>
+      <th>Index</th>
+      <th>Plane Num</th>
+      <th>Children</th>
+      <th>Mins</th>
+      <th>Maxs</th>
+    </tr>
+  </table>
+  <h2 id="leafsHeading">Leafs</h2>
+  <table id="leafsTable">
+    <tr>
+      <th>Index</th>
+      <th>Cluster</th>
+      <th>Area</th>
+      <th>First Leaf Surface</th>
+      <th>Num Leaf Surfaces</th>
+      <th>First Leaf Brush</th>
+      <th>Num Leaf Brushes</th>
+    </tr>
+  </table>
+  <h2 id="leafbrushesHeading">Leafbrushes</h2>
+  <table id="leafBrushesTable">
+    <tr>
+      <th>Index</th>
+      <th>Brush</th>
+    </tr>
+  </table>
+  <h2 id="leafsurfacesHeading">Leafsurfaces</h2>
+  <table id="leafSurfacesTable">
+    <tr>
+      <th>Index</th>
+      <th>Face</th>
+    </tr>
+  </table>
+  <h2 id="collisionvertsHeading">Collisionverts</h2>
+  <table id="collisionVertsTable">
+    <tr>
+      <th>Index</th>
+      <th>Check Stamp</th>
+      <th>XYZ</th>
+    </tr>
+  </table>
+  <h2 id="collisionedgesHeading">Collisionedges</h2>
+  <table id="collisionEdgesTable">
+    <tr>
+      <th>Index</th>
+      <th>Check Stamp</th>
+      <th>Origin</th>
+      <th>Length</th>
+    </tr>
+  </table>
+  <h2 id="collisiontrisHeading">Collisiontris</h2>
+  <table id="collisionTrisTable">
+    <tr>
+      <th>Index</th>
+      <th>Plane</th>
+      <th>Vert Indices</th>
+      <th>Edge Indices</th>
+    </tr>
+  </table>
+  <h2 id="collisionbordersHeading">Collisionborders</h2>
+  <table id="collisionBordersTable">
+    <tr>
+      <th>Index</th>
+      <th>Dist Eq</th>
+      <th>Z Base</th>
+      <th>Z Slope</th>
+      <th>Start</th>
+      <th>Length</th>
+    </tr>
+  </table>
+  <h2 id="collisionpartsHeading">Collisionparts</h2>
+  <table id="collisionPartitionsTable">
+    <tr>
+      <th>Index</th>
+      <th>Check Stamp</th>
+      <th>Tri Count</th>
+      <th>Border Count</th>
+      <th>First Tri Index</th>
+      <th>First Border Index</th>
+    </tr>
+  </table>
+  <h2 id="collisionaabbsHeading">Collisionaabbs</h2>
+  <table id="collisionAabbsTable">
+    <tr>
+      <th>Index</th>
+      <th>Origin</th>
+      <th>Half Size</th>
+      <th>Material Index</th>
+      <th>Child Count</th>
+      <th>U</th>
+    </tr>
+  </table>
+  <h2 id="modelsHeading">Models</h2>
+  <table id="modelsTable">
+    <tr>
+      <th>Index</th>
+      <th>Mins</th>
+      <th>Maxs</th>
+      <th>First Triangle</th>
+      <th>Num Triangles</th>
+      <th>First Surface</th>
+      <th>Num Surfaces</th>
+      <th>First Brush</th>
+      <th>Num Brushes</th>
+    </tr>
+  </table>
+  <h2 id="visibilityHeading">Visibility</h2>
+  <table id="visibilityTable">
+    <tr>
+      <th>Index</th>
+      <th>Data</th>
+    </tr>
+  </table>
+  <h2 id="entdataHeading">Entdata</h2>
+  <pre id="entitiesPre"></pre>
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="D3DBSPViewer.js"></script>
+  <script src="LumpStuff.js"></script>
+  <script src="RendererThree.js"></script>
+  <script src="D3DBSPParser.js"></script>
+  <script>
+    const viewer = new D3DBSPViewer()
+    window.viewer = viewer;
+  </script>
+</body>
+</html>
