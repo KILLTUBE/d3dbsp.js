@@ -209,8 +209,8 @@
                         lightmapIndex: this.view.getUint16(offset + 2, true),
                         firstVertex: this.view.getUint32(offset + 4, true),
                         vertexCount: this.view.getUint16(offset + 8, true),
-                        firstIndex: this.view.getUint32(offset + 10, true),
-                        indexCount: this.view.getUint16(offset + 14, true)
+                        indexCount: this.view.getUint16(offset + 10, true),
+                        firstIndex: this.view.getUint32(offset + 12, true),
                     });
                 }
                 return soups;
