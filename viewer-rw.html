@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>d3dbsp Viewer (Rotatable Brushes)</title>
+  <style>
+    #dropzone {
+      width: 200px;
+      height: 100px;
+      border: 2px dashed #ccc;
+      text-align: center;
+      line-height: 100px;
+      margin: 10px;
+    }
+    #canvas {
+      width: 640px;
+      height: 480px;
+      border: 1px solid #000;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 5px;
+    }
+    .collapsible {
+      cursor: pointer;
+      background-color: #f1f1f1;
+      padding: 10px;
+      margin: 5px 0;
+    }
+    .content {
+      display: none;
+      padding: 10px;
+    }
+    button {
+      margin: 10px;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="dropzone">Drop d3dbsp file here</div>
+  <canvas id="canvas"></canvas>
+  <button id="generateBtn">Generate .d3dbsp binary</button>
+  <!-- Keep all existing tables -->
+  <div class="collapsible">Header</div>
+  <div class="content">
+    <table id="headerTable">
+      <tr><th>Ident</th><td id="ident"></td></tr>
+      <tr><th>Version</th><td id="version"></td></tr>
+      <tr><th>Lumps</th><td><table id="lumpsTable"><tr><th>Index</th><th>Name</th><th>Length</th><th>Offset</th></tr></table></td></tr>
+    </table>
+  </div>
+  <div class="collapsible">Materials (First 10)</div>
+  <div class="content">
+    <table id="materialsTable"><tr><th>Index</th><th>Material</th><th>Surface Flags</th><th>Content Flags</th></tr></table>
+  </div>
+  <div class="collapsible">Triangle Soups (First 10)</div>
+  <div class="content">
+    <table id="triangleSoupsTable"><tr><th>Index</th><th>Material Index</th><th>Lightmap Index</th><th>First Vertex</th><th>Vertex Count</th><th>Index Count</th><th>First Index</th></tr></table>
+  </div>
+  <div class="collapsible">Vertices (First 10)</div>
+  <div class="content">
+    <table id="verticesTable"><tr><th>Index</th><th>Position X</th><th>Position Y</th><th>Position Z</th><th>Normal X</th><th>Normal Y</th><th>Normal Z</th></tr></table>
+  </div>
+  <div class="collapsible">Draw Indexes (First 10)</div>
+  <div class="content">
+    <table id="drawIndexesTable"><tr><th>Index</th><th>Offset</th></tr></table>
+  </div>
+  <div class="collapsible">Brushes (First 10)</div>
+  <div class="content">
+    <table id="brushesTable"><tr><th>Index</th><th>Num Sides</th><th>Material Num</th></tr></table>
+  </div>
+  <div class="collapsible">Brush Sides (First 10)</div>
+  <div class="content">
+    <table id="brushSidesTable"><tr><th>Index</th><th>Plane</th><th>Material Num</th></tr></table>
+  </div>
+  <div class="collapsible">Planes (First 10)</div>
+  <div class="content">
+    <table id="planesTable"><tr><th>Index</th><th>Normal X</th><th>Normal Y</th><th>Normal Z</th><th>Distance</th></tr></table>
+  </div>
+  <div class="collapsible">Models (First 10)</div>
+  <div class="content">
+    <table id="modelsTable"><tr><th>Index</th><th>Mins X</th><th>Mins Y</th><th>Mins Z</th><th>Maxs X</th><th>Maxs Y</th><th>Maxs Z</th><th>First Triangle</th><th>Num Triangles</th></tr></table>
+  </div>
+
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    // Struct Classes
+    class Lump {
+      constructor(offset = 0, length = 0, name = '') {
+        this.offset = offset;
+        this.length = length;
+        this.name = name;
+      }
+      write(view, offset) {
+        view.setInt32(offset, this.length, true);
+        view.setInt32(offset + 4, this.offset, true);
+      }
+    }
+
+    class Header {
+      constructor(ident = 'IBSP', version = 0, lumps = new Array(39).fill().map(() => new Lump())) {
+        this.ident = ident;
+        this.version = version;
+        this.lumps = lumps;
+      }
+      write(view, offset) {
+        for (let i = 0; i < 4; i++) {
+          view.setUint8(offset + i, this.ident.charCodeAt(i) || 0);
+        }
+        view.setInt32(offset + 4, this.version, true);
+        for (let i = 0; i < this.lumps.length; i++) {
+          this.lumps[i].write(view, offset + 8 + i * 8);
+        }
+      }
+    }
+
+    class Material {
+      constructor(material = '', surfaceFlags = 0, contentFlags = 0) {
+        this.material = material;
+        this.surfaceFlags = surfaceFlags;
+        this.contentFlags = contentFlags;
+      }
+      write(view, offset) {
+        for (let i = 0; i < 64; i++) {
+          view.setUint8(offset + i, this.material.charCodeAt(i) || 0);
+        }
+        view.setUint32(offset + 64, this.surfaceFlags, true);
+        view.setUint32(offset + 68, this.contentFlags, true);
+      }
+    }
+
+    class TriangleSoup {
+      constructor(materialIndex = 0, lightmapIndex = 0, firstVertex = 0, 
+                 vertexCount = 0, indexCount = 0, firstIndex = 0) {
+        this.materialIndex = materialIndex;
+        this.lightmapIndex = lightmapIndex;
+        this.firstVertex = firstVertex;
+        this.vertexCount = vertexCount;
+        this.indexCount = indexCount;
+        this.firstIndex = firstIndex;
+      }
+      write(view, offset) {
+        view.setUint16(offset, this.materialIndex, true);
+        view.setUint16(offset + 2, this.lightmapIndex, true);
+        view.setUint32(offset + 4, this.firstVertex, true);
+        view.setUint16(offset + 8, this.vertexCount, true);
+        view.setUint16(offset + 10, this.indexCount, true);
+        view.setUint32(offset + 12, this.firstIndex, true);
+      }
+    }
+
+    class Vertex {
+      constructor(position = [0,0,0], normal = [0,0,0]) {
+        this.position = position;
+        this.normal = normal;
+        // Simplified - real d3dbsp vertex has more fields
+      }
+      write(view, offset) {
+        view.setFloat32(offset, this.position[0], true);
+        view.setFloat32(offset + 4, this.position[1], true);
+        view.setFloat32(offset + 8, this.position[2], true);
+        view.setFloat32(offset + 12, this.normal[0], true);
+        view.setFloat32(offset + 16, this.normal[1], true);
+        view.setFloat32(offset + 20, this.normal[2], true);
+        // Note: Full vertex is 68 bytes, this is simplified
+        // Fill remaining 48 bytes with zeros
+        for (let i = 24; i < 68; i++) {
+          view.setUint8(offset + i, 0);
+        }
+      }
+    }
+
+    class Brush {
+      constructor(numSides = 0, materialNum = 0) {
+        this.numSides = numSides;
+        this.materialNum = materialNum;
+      }
+      write(view, offset) {
+        view.setUint16(offset, this.numSides, true);
+        view.setUint16(offset + 2, this.materialNum, true);
+      }
+    }
+
+    class BrushSide {
+      constructor(plane = 0, materialNum = 0) {
+        this.plane = plane;
+        this.materialNum = materialNum;
+      }
+      write(view, offset) {
+        view.setInt32(offset, this.plane, true);
+        view.setInt32(offset + 4, this.materialNum, true);
+      }
+    }
+
+    class Plane {
+      constructor(normal = [0,0,0], dist = 0) {
+        this.normal = normal;
+        this.dist = dist;
+      }
+      write(view, offset) {
+        view.setFloat32(offset, this.normal[0], true);
+        view.setFloat32(offset + 4, this.normal[1], true);
+        view.setFloat32(offset + 8, this.normal[2], true);
+        view.setFloat32(offset + 12, this.dist, true);
+      }
+    }
+
+    class Model {
+      constructor(mins = [0,0,0], maxs = [0,0,0], firstTriangle = 0, numTriangles = 0) {
+        this.mins = mins;
+        this.maxs = maxs;
+        this.firstTriangle = firstTriangle;
+        this.numTriangles = numTriangles;
+        // Simplified - real dmodel_t has more fields
+      }
+      write(view, offset) {
+        view.setFloat32(offset, this.mins[0], true);
+        view.setFloat32(offset + 4, this.mins[1], true);
+        view.setFloat32(offset + 8, this.mins[2], true);
+        view.setFloat32(offset + 12, this.maxs[0], true);
+        view.setFloat32(offset + 16, this.maxs[1], true);
+        view.setFloat32(offset + 20, this.maxs[2], true);
+        view.setUint32(offset + 24, this.firstTriangle, true);
+        view.setUint32(offset + 28, this.numTriangles, true);
+        // Fill remaining 20 bytes with zeros (48 byte total size)
+        for (let i = 32; i < 48; i++) {
+          view.setUint8(offset + i, 0);
+        }
+      }
+    }
+
+    class D3DBSPParser {
+      constructor() {
+        this.header = new Header();
+        this.materials = [];
+        this.triangleSoups = [];
+        this.vertices = [];
+        this.drawIndexes = new Uint16Array(0);
+        this.brushes = [];
+        this.brushSides = [];
+        this.planes = [];
+        this.models = [];
+      }
+
+      parse(buffer) {
+        const view = new DataView(buffer);
+        this.readHeader(view);
+        this.readMaterials(view);
+        this.readTriangleSoups(view);
+        this.readVertices(view);
+        this.readDrawIndexes(view);
+        this.readBrushes(view);
+        this.readBrushSides(view);
+        this.readPlanes(view);
+        this.readModels(view);
+      }
+
+      readString(view, offset, length) {
+        let str = '';
+        for (let i = 0; i < length; i++) {
+          const char = view.getUint8(offset + i);
+          if (char === 0) break;
+          str += String.fromCharCode(char);
+        }
+        return str;
+      }
+
+      readHeader(view) {
+        const ident = this.readString(view, 0, 4);
+        const version = view.getInt32(4, true);
+        const lumps = [];
+        for (let i = 0; i < 39; i++) {
+          const base = 8 + i * 8;
+          lumps.push(new Lump(
+            view.getInt32(base + 4, true),
+            view.getInt32(base, true),
+            lumpNames[i] || `Unknown_${i}`
+          ));
+        }
+        this.header = new Header(ident, version, lumps);
+      }
+
+      readMaterials(view) {
+        const lump = this.header.lumps[0];
+        this.materials = [];
+        const count = lump.length / 72;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 72;
+          this.materials.push(new Material(
+            this.readString(view, base, 64),
+            view.getUint32(base + 64, true),
+            view.getUint32(base + 68, true)
+          ));
+        }
+      }
+
+      readTriangleSoups(view) {
+        const lump = this.header.lumps[7];
+        this.triangleSoups = [];
+        const count = lump.length / 16;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 16;
+          this.triangleSoups.push(new TriangleSoup(
+            view.getUint16(base, true),
+            view.getUint16(base + 2, true),
+            view.getUint32(base + 4, true),
+            view.getUint16(base + 8, true),
+            view.getUint16(base + 10, true),
+            view.getUint32(base + 12, true)
+          ));
+        }
+      }
+
+      readVertices(view) {
+        const lump = this.header.lumps[8];
+        this.vertices = [];
+        const count = lump.length / 68;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 68;
+          this.vertices.push(new Vertex(
+            [
+              view.getFloat32(base, true),
+              view.getFloat32(base + 4, true),
+              view.getFloat32(base + 8, true)
+            ],
+            [
+              view.getFloat32(base + 12, true),
+              view.getFloat32(base + 16, true),
+              view.getFloat32(base + 20, true)
+            ]
+          ));
+        }
+      }
+
+      readDrawIndexes(view) {
+        const lump = this.header.lumps[9];
+        this.drawIndexes = new Uint16Array(view.buffer, lump.offset, lump.length / 2);
+      }
+
+      readBrushes(view) {
+        const lump = this.header.lumps[6];
+        this.brushes = [];
+        const count = lump.length / 4;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 4;
+          this.brushes.push(new Brush(
+            view.getUint16(base, true),
+            view.getUint16(base + 2, true)
+          ));
+        }
+      }
+
+      readBrushSides(view) {
+        const lump = this.header.lumps[5];
+        this.brushSides = [];
+        const count = lump.length / 8;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 8;
+          this.brushSides.push(new BrushSide(
+            view.getInt32(base, true),
+            view.getInt32(base + 4, true)
+          ));
+        }
+      }
+
+      readPlanes(view) {
+        const lump = this.header.lumps[4];
+        this.planes = [];
+        const count = lump.length / 16;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 16;
+          this.planes.push(new Plane(
+            [
+              view.getFloat32(base, true),
+              view.getFloat32(base + 4, true),
+              view.getFloat32(base + 8, true)
+            ],
+            view.getFloat32(base + 12, true)
+          ));
+        }
+      }
+
+      readModels(view) {
+        const lump = this.header.lumps[35];
+        this.models = [];
+        const count = lump.length / 48;
+        for (let i = 0; i < count; i++) {
+          const base = lump.offset + i * 48;
+          this.models.push(new Model(
+            [
+              view.getFloat32(base, true),
+              view.getFloat32(base + 4, true),
+              view.getFloat32(base + 8, true)
+            ],
+            [
+              view.getFloat32(base + 12, true),
+              view.getFloat32(base + 16, true),
+              view.getFloat32(base + 20, true)
+            ],
+            view.getUint32(base + 24, true),
+            view.getUint32(base + 28, true)
+          ));
+        }
+      }
+
+      write() {
+        // Calculate sizes
+        const headerSize = 8 + 39 * 8; // ident + version + 39 lumps
+        const materialsSize = this.materials.length * 72;
+        const triangleSoupsSize = this.triangleSoups.length * 16;
+        const verticesSize = this.vertices.length * 68;
+        const drawIndexesSize = this.drawIndexes.length * 2;
+        const brushesSize = this.brushes.length * 4;
+        const brushSidesSize = this.brushSides.length * 8;
+        const planesSize = this.planes.length * 16;
+        const modelsSize = this.models.length * 48;
+
+        // Create buffer
+        const totalSize = headerSize + materialsSize + triangleSoupsSize + 
+                         verticesSize + drawIndexesSize + brushesSize + 
+                         brushSidesSize + planesSize + modelsSize;
+        const buffer = new ArrayBuffer(totalSize);
+        const view = new DataView(buffer);
+
+        // Write header (will rewrite with offsets later)
+        let offset = 0;
+        this.header.write(view, offset);
+        offset = headerSize;
+
+        // Write materials
+        this.header.lumps[0].offset = offset;
+        this.header.lumps[0].length = materialsSize;
+        this.materials.forEach((m, i) => m.write(view, offset + i * 72));
+        offset += materialsSize;
+
+        // Write planes
+        this.header.lumps[4].offset = offset;
+        this.header.lumps[4].length = planesSize;
+        this.planes.forEach((p, i) => p.write(view, offset + i * 16));
+        offset += planesSize;
+
+        // Write brush sides
+        this.header.lumps[5].offset = offset;
+        this.header.lumps[5].length = brushSidesSize;
+        this.brushSides.forEach((bs, i) => bs.write(view, offset + i * 8));
+        offset += brushSidesSize;
+
+        // Write brushes
+        this.header.lumps[6].offset = offset;
+        this.header.lumps[6].length = brushesSize;
+        this.brushes.forEach((b, i) => b.write(view, offset + i * 4));
+        offset += brushesSize;
+
+        // Write triangle soups
+        this.header.lumps[7].offset = offset;
+        this.header.lumps[7].length = triangleSoupsSize;
+        this.triangleSoups.forEach((ts, i) => ts.write(view, offset + i * 16));
+        offset += triangleSoupsSize;
+
+        // Write vertices
+        this.header.lumps[8].offset = offset;
+        this.header.lumps[8].length = verticesSize;
+        this.vertices.forEach((v, i) => v.write(view, offset + i * 68));
+        offset += verticesSize;
+
+        // Write draw indexes
+        this.header.lumps[9].offset = offset;
+        this.header.lumps[9].length = drawIndexesSize;
+        this.drawIndexes.forEach((idx, i) => view.setUint16(offset + i * 2, idx, true));
+        offset += drawIndexesSize;
+
+        // Write models
+        this.header.lumps[35].offset = offset;
+        this.header.lumps[35].length = modelsSize;
+        this.models.forEach((m, i) => m.write(view, offset + i * 48));
+        offset += modelsSize;
+
+        // Rewrite header with updated offsets
+        this.header.write(view, 0);
+
+        return buffer;
+      }
+    }
+
+    class Renderer {
+      constructor(canvas) {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, 640 / 480, 0.1, 10000);
+        this.renderer = new THREE.WebGLRenderer({ canvas });
+        this.renderer.setSize(640, 480);
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.animate = this.animate.bind(this);
+        this.animate();
+      }
+      animate() {
+        requestAnimationFrame(this.animate);
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+      }
+      renderModel(parser) {
+        while (this.scene.children.length > 0) {
+          this.scene.remove(this.scene.children[0]);
+        }
+        parser.triangleSoups.forEach((soup, index) => {
+          const geometry = new THREE.BufferGeometry();
+          const positions = new Float32Array(soup.vertexCount * 3);
+          for (let i = 0; i < soup.vertexCount; i++) {
+            const vertex = parser.vertices[soup.firstVertex + i];
+            positions[i * 3] = vertex.position[0];
+            positions[i * 3 + 1] = vertex.position[1];
+            positions[i * 3 + 2] = vertex.position[2];
+          }
+          geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          const indices = parser.drawIndexes.slice(soup.firstIndex, soup.firstIndex + soup.indexCount);
+          geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+          const color = new THREE.Color().setHSL(index / parser.triangleSoups.length, 1, 0.5);
+          const material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+          const mesh = new THREE.Mesh(geometry, material);
+          this.scene.add(mesh);
+        });
+        this.adjustCamera(parser.vertices);
+      }
+      adjustCamera(vertices) {
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        vertices.forEach(vertex => {
+          const pos = vertex.position;
+          minX = Math.min(minX, pos[0]);
+          minY = Math.min(minY, pos[1]);
+          minZ = Math.min(minZ, pos[2]);
+          maxX = Math.max(maxX, pos[0]);
+          maxY = Math.max(maxY, pos[1]);
+          maxZ = Math.max(maxZ, pos[2]);
+        });
+        const center = [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2];
+        const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
+        this.camera.position.set(center[0], center[1], center[2] + size);
+        this.controls.target.set(center[0], center[1], center[2]);
+        this.controls.update();
+      }
+      rotateBrushes(x, y, z) {
+        const rotation = new THREE.Euler(x * Math.PI / 180, y * Math.PI / 180, z * Math.PI / 180);
+        this.scene.children.forEach(mesh => {
+          mesh.rotation.copy(rotation);
+        });
+      }
+    }
+
+    class D3DBSPViewer {
+      constructor() {
+        this.parser = new D3DBSPParser();
+        this.renderer = new Renderer(document.getElementById('canvas'));
+        this.dropzone = document.getElementById('dropzone');
+        this.tables = {
+          header: {
+            ident: document.getElementById('ident'),
+            version: document.getElementById('version'),
+            lumps: document.getElementById('lumpsTable')
+          },
+          materials: document.getElementById('materialsTable'),
+          triangleSoups: document.getElementById('triangleSoupsTable'),
+          vertices: document.getElementById('verticesTable'),
+          drawIndexes: document.getElementById('drawIndexesTable'),
+          brushes: document.getElementById('brushesTable'),
+          brushSides: document.getElementById('brushSidesTable'),
+          planes: document.getElementById('planesTable'),
+          models: document.getElementById('modelsTable')
+        };
+        this.setupEventListeners();
+        this.setupCollapsibles();
+        this.setupGenerateButton();
+      }
+
+      setupEventListeners() {
+        this.dropzone.addEventListener('dragover', e => e.preventDefault());
+        this.dropzone.addEventListener('drop', e => {
+          e.preventDefault();
+          const file = e.dataTransfer.files[0];
+          const reader = new FileReader();
+          reader.onload = () => {
+            this.parser.parse(reader.result);
+            this.displayData();
+            this.renderer.renderModel(this.parser);
+            this.renderer.rotateBrushes(-90, 0, 90);
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      setupCollapsibles() {
+        const collapsibles = document.getElementsByClassName('collapsible');
+        for (let i = 0; i < collapsibles.length; i++) {
+          collapsibles[i].addEventListener('click', function() {
+            this.classList.toggle('active');
+            const content = this.nextElementSibling;
+            content.style.display = content.style.display === 'block' ? 'none' : 'block';
+          });
+        }
+      }
+
+      setupGenerateButton() {
+        const btn = document.getElementById('generateBtn');
+        btn.addEventListener('click', () => {
+          const buffer = this.parser.write();
+          const blob = new Blob([buffer], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'generated.d3dbsp';
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      displayData() {
+        this.displayHeader(this.parser.header);
+        this.displayMaterials(this.parser.materials);
+        this.displayTriangleSoups(this.parser.triangleSoups);
+        this.displayVertices(this.parser.vertices);
+        this.displayDrawIndexes(this.parser.drawIndexes);
+        this.displayBrushes(this.parser.brushes);
+        this.displayBrushSides(this.parser.brushSides);
+        this.displayPlanes(this.parser.planes);
+        this.displayModels(this.parser.models);
+      }
+
+      displayHeader(header) {
+        this.tables.header.ident.textContent = header.ident;
+        this.tables.header.version.textContent = header.version;
+        while (this.tables.header.lumps.rows.length > 1) this.tables.header.lumps.deleteRow(1);
+        header.lumps.forEach((lump, i) => {
+          const row = this.tables.header.lumps.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = lump.name;
+          row.insertCell().textContent = lump.length;
+          row.insertCell().textContent = lump.offset;
+        });
+      }
+
+      displayMaterials(materials) {
+        while (this.tables.materials.rows.length > 1) this.tables.materials.deleteRow(1);
+        materials.slice(0, 10).forEach((mat, i) => {
+          const row = this.tables.materials.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = mat.material;
+          row.insertCell().textContent = mat.surfaceFlags;
+          row.insertCell().textContent = mat.contentFlags;
+        });
+      }
+
+      displayTriangleSoups(triangleSoups) {
+        while (this.tables.triangleSoups.rows.length > 1) this.tables.triangleSoups.deleteRow(1);
+        triangleSoups.slice(0, 10).forEach((soup, i) => {
+          const row = this.tables.triangleSoups.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = soup.materialIndex;
+          row.insertCell().textContent = soup.lightmapIndex;
+          row.insertCell().textContent = soup.firstVertex;
+          row.insertCell().textContent = soup.vertexCount;
+          row.insertCell().textContent = soup.indexCount;
+          row.insertCell().textContent = soup.firstIndex;
+        });
+      }
+
+      displayVertices(vertices) {
+        while (this.tables.vertices.rows.length > 1) this.tables.vertices.deleteRow(1);
+        vertices.slice(0, 10).forEach((vertex, i) => {
+          const row = this.tables.vertices.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = vertex.position[0].toFixed(2);
+          row.insertCell().textContent = vertex.position[1].toFixed(2);
+          row.insertCell().textContent = vertex.position[2].toFixed(2);
+          row.insertCell().textContent = vertex.normal[0].toFixed(2);
+          row.insertCell().textContent = vertex.normal[1].toFixed(2);
+          row.insertCell().textContent = vertex.normal[2].toFixed(2);
+        });
+      }
+
+      displayDrawIndexes(drawIndexes) {
+        while (this.tables.drawIndexes.rows.length > 1) this.tables.drawIndexes.deleteRow(1);
+        drawIndexes.slice(0, 10).forEach((offset, i) => {
+          const row = this.tables.drawIndexes.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = offset;
+        });
+      }
+
+      displayBrushes(brushes) {
+        while (this.tables.brushes.rows.length > 1) this.tables.brushes.deleteRow(1);
+        brushes.slice(0, 10).forEach((brush, i) => {
+          const row = this.tables.brushes.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = brush.numSides;
+          row.insertCell().textContent = brush.materialNum;
+        });
+      }
+
+      displayBrushSides(brushSides) {
+        while (this.tables.brushSides.rows.length > 1) this.tables.brushSides.deleteRow(1);
+        brushSides.slice(0, 10).forEach((side, i) => {
+          const row = this.tables.brushSides.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = side.plane;
+          row.insertCell().textContent = side.materialNum;
+        });
+      }
+
+      displayPlanes(planes) {
+        while (this.tables.planes.rows.length > 1) this.tables.planes.deleteRow(1);
+        planes.slice(0, 10).forEach((plane, i) => {
+          const row = this.tables.planes.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = plane.normal[0].toFixed(2);
+          row.insertCell().textContent = plane.normal[1].toFixed(2);
+          row.insertCell().textContent = plane.normal[2].toFixed(2);
+          row.insertCell().textContent = plane.dist.toFixed(2);
+        });
+      }
+
+      displayModels(models) {
+        while (this.tables.models.rows.length > 1) this.tables.models.deleteRow(1);
+        models.slice(0, 10).forEach((model, i) => {
+          const row = this.tables.models.insertRow();
+          row.insertCell().textContent = i;
+          row.insertCell().textContent = model.mins[0].toFixed(2);
+          row.insertCell().textContent = model.mins[1].toFixed(2);
+          row.insertCell().textContent = model.mins[2].toFixed(2);
+          row.insertCell().textContent = model.maxs[0].toFixed(2);
+          row.insertCell().textContent = model.maxs[1].toFixed(2);
+          row.insertCell().textContent = model.maxs[2].toFixed(2);
+          row.insertCell().textContent = model.firstTriangle;
+          row.insertCell().textContent = model.numTriangles;
+        });
+      }
+    }
+
+    const lumpNames = [
+      "materials", "lightmaps", "light grid hash", "light grid values", "planes",
+      "brushsides", "brushes", "trianglesoups", "drawverts", "drawindexes",
+      "cullgroups", "cullgroupindexes", "shadowverts", "shadowindices",
+      "shadowclusters", "shadowaabbtrees", "shadowsources", "portalverts",
+      "occluders", "occluderplanes", "occluderedges", "occluderindexes",
+      "aabbtrees", "cells", "portals", "nodes", "leafs", "leafbrushes",
+      "leafsurfaces", "collisionverts", "collisionedges", "collisiontris",
+      "collisionborders", "collisionparts", "collisionaabbs", "models",
+      "visibility", "entdata", "paths"
+    ];
+
+    const viewer = new D3DBSPViewer();
+    window.viewer = viewer;
+  </script>
+</body>
+</html>
