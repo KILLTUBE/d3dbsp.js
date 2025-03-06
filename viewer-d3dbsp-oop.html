@@ -96,9 +96,9 @@
       parse(buffer) {
         const view = new DataView(buffer);
         this.header = this.readHeader(view);
-        this.triangleSoups = this.readTriangleSoups(view, this.header.lumps[7]);
-        this.vertices = this.readVertices(view, this.header.lumps[8]);
-        this.drawIndexes = this.readDrawIndexes(view, this.header.lumps[9]);
+        this.triangleSoups = this.readTriangleSoups(view);
+        this.vertices = this.readVertices(view);
+        this.drawIndexes = this.readDrawIndexes(view);
       }
       readString(view, offset, length) {
         let str = '';
@@ -120,7 +120,8 @@
         }
         return { ident, version, lumps };
       }
-      readTriangleSoups(view, lump) {
+      readTriangleSoups(view) {
+        const lump = this.header.lumps[7];
         const nTriangleSoups = lump.length / 16;
         const triangleSoups = [];
         for (let i = 0; i < nTriangleSoups; i++) {
@@ -136,7 +137,8 @@
         }
         return triangleSoups;
       }
-      readVertices(view, lump) {
+      readVertices(view) {
+        const lump = this.header.lumps[8];
         const nVertices = lump.length / 68;
         const vertices = [];
         for (let i = 0; i < nVertices; i++) {
@@ -151,7 +153,8 @@
         }
         return vertices;
       }
-      readDrawIndexes(view, lump) {
+      readDrawIndexes(view) {
+        const lump = this.header.lumps[9];
         return new Uint16Array(view.buffer, lump.offset, lump.length / 2);
       }
     }
