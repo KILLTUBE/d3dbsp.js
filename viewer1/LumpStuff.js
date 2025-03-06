@@ -145,7 +145,6 @@ class BrushSide {
     //}
     view.setUint32(offset + 4, this.materialNum, true);
   }
-
   static SIZE = 8; // 4 bytes for union (float or uint32) + 4 bytes for texture
 }
 class Brush {
@@ -746,7 +745,6 @@ class Model {
     this.firstBrush = firstBrush;
     this.numBrushes = numBrushes;
   }
-
   /**
    * Reads a Model instance from a DataView at the specified offset.
    * @param {DataView} view - The DataView to read from
@@ -770,7 +768,6 @@ class Model {
     const numSurfaces = view.getUint32(offset + 36, true);   // Offset 36
     const firstBrush = view.getUint32(offset + 40, true);    // Offset 40
     const numBrushes = view.getUint32(offset + 44, true);    // Offset 44
-
     return new Model(
       mins,
       maxs,
@@ -782,7 +779,6 @@ class Model {
       numBrushes
     );
   }
-
   /**
    * Writes the Model instance to a DataView at the specified offset.
    * @param {DataView} view - The DataView to write to
@@ -802,7 +798,6 @@ class Model {
     view.setUint32(offset + 40, this.firstBrush, true);    // Offset 40
     view.setUint32(offset + 44, this.numBrushes, true);    // Offset 44
   }
-
   // Size of the structure in bytes: 12 (mins) + 12 (maxs) + 4*6 (u32 fields) = 48
   static SIZE = 48;
 }
