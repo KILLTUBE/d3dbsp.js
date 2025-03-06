@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CoD2 .d3dbsp Visualizer</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { width: 100%; height: 100%; }
+        #dropZone {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 300px;
+            height: 100px;
+            border: 2px dashed #ccc;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        #dropZone.dragover { background: #e1e1e1; }
+    </style>
+</head>
+<body>
+    <div id="dropZone">Drag and drop a .d3dbsp file here</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Lump types (mirroring the C enum)
+        const LumpType = {
+            LUMP_MATERIALS: 0,
+            LUMP_PLANES: 4,
+            LUMP_BRUSHSIDES: 5,
+            LUMP_BRUSHES: 6,
+            LUMP_TRIANGLES: 7,
+            LUMP_DRAWVERTS: 8,
+            LUMP_DRAWINDICES: 9,
+            LUMP_MODELS: 35,
+            LUMP_ENTITIES: 37,
+            LUMP_MAX: 39
+        };
+
+        // Three.js scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        camera.position.set(0, 100, 200);
+        camera.lookAt(0, 0, 0);
+
+        // Orbit controls (for simplicity, you can add OrbitControls.js if desired)
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+                const deltaRotationQuaternion = new THREE.Quaternion()
+                    .setFromEuler(new THREE.Euler(
+                        toRadians(deltaMove.y * 0.5),
+                        toRadians(deltaMove.x * 0.5),
+                        0,
+                        'XYZ'
+                    ));
+                camera.quaternion.multiplyQuaternions(deltaRotationQuaternion, camera.quaternion);
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+        renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+        renderer.domElement.addEventListener('wheel', (e) => {
+            camera.position.z += e.deltaY * 0.1;
+            camera.position.z = Math.max(50, Math.min(1000, camera.position.z));
+        });
+
+        function toRadians(angle) { return angle * (Math.PI / 180); }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Drag and drop handling
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const arrayBuffer = event.target.result;
+                    parseBSP(arrayBuffer);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // BSP parsing class
+        class BSPParser {
+            constructor(arrayBuffer) {
+                this.view = new DataView(arrayBuffer);
+                this.lumps = [];
+                this.parseHeader();
+            }
+
+            parseHeader() {
+                const ident = String.fromCharCode(
+                    this.view.getUint8(0), this.view.getUint8(1),
+                    this.view.getUint8(2), this.view.getUint8(3)
+                );
+                if (ident !== 'IBSP') throw new Error('Invalid BSP file');
+                const version = this.view.getUint32(4, true);
+                if (version !== 4) throw new Error('Unsupported BSP version');
+                for (let i = 0; i < LumpType.LUMP_MAX; i++) {
+                    const offset = 8 + i * 8;
+                    const fileofs = this.view.getUint32(offset, true);
+                    const filelen = this.view.getUint32(offset + 4, true);
+                    this.lumps[i] = { fileofs, filelen };
+                }
+            }
+
+            readString(offset, maxLength) {
+                let str = '';
+                for (let i = 0; i < maxLength; i++) {
+                    const char = this.view.getUint8(offset + i);
+                    if (char === 0) break;
+                    str += String.fromCharCode(char);
+                }
+                return str;
+            }
+
+            readMaterials() {
+                const lump = this.lumps[LumpType.LUMP_MATERIALS];
+                const count = lump.filelen / 72; // sizeof(dmaterial_t)
+                const materials = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 72;
+                    materials.push({
+                        name: this.readString(offset, 64),
+                        surfaceFlags: this.view.getUint32(offset + 64, true),
+                        contentFlags: this.view.getUint32(offset + 68, true)
+                    });
+                }
+                return materials;
+            }
+
+            readDrawVerts() {
+                const lump = this.lumps[LumpType.LUMP_DRAWVERTS];
+                const count = lump.filelen / 56; // sizeof(DiskGfxVertex)
+                const vertices = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 56;
+                    vertices.push({
+                        xyz: [
+                            this.view.getFloat32(offset, true),
+                            this.view.getFloat32(offset + 4, true),
+                            this.view.getFloat32(offset + 8, true)
+                        ],
+                        normal: [
+                            this.view.getFloat32(offset + 12, true),
+                            this.view.getFloat32(offset + 16, true),
+                            this.view.getFloat32(offset + 20, true)
+                        ]
+                    });
+                }
+                return vertices;
+            }
+
+            readDrawIndices() {
+                const lump = this.lumps[LumpType.LUMP_DRAWINDICES];
+                const count = lump.filelen / 2; // sizeof(u16)
+                const indices = [];
+                for (let i = 0; i < count; i++) {
+                    indices.push(this.view.getUint16(lump.fileofs + i * 2, true));
+                }
+                return indices;
+            }
+
+            readTriangleSoups() {
+                const lump = this.lumps[LumpType.LUMP_TRIANGLES];
+                const count = lump.filelen / 16; // sizeof(DiskTriangleSoup)
+                const soups = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 16;
+                    debugger;
+                    soups.push({
+                        materialIndex: this.view.getUint16(offset, true),
+                        lightmapIndex: this.view.getUint16(offset + 2, true),
+                        firstVertex: this.view.getUint32(offset + 4, true),
+                        vertexCount: this.view.getUint16(offset + 8, true),
+                        firstIndex: this.view.getUint32(offset + 10, true),
+                        indexCount: this.view.getUint16(offset + 14, true)
+                    });
+                }
+                return soups;
+            }
+
+            readPlanes() {
+                const lump = this.lumps[LumpType.LUMP_PLANES];
+                const count = lump.filelen / 16; // sizeof(DiskPlane)
+                const planes = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 16;
+                    planes.push({
+                        normal: [
+                            this.view.getFloat32(offset, true),
+                            this.view.getFloat32(offset + 4, true),
+                            this.view.getFloat32(offset + 8, true)
+                        ],
+                        dist: this.view.getFloat32(offset + 12, true)
+                    });
+                }
+                return planes;
+            }
+
+            readBrushSides() {
+                const lump = this.lumps[LumpType.LUMP_BRUSHSIDES];
+                const count = lump.filelen / 8; // sizeof(cbrushside_t)
+                const sides = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 8;
+                    sides.push({
+                        plane: this.view.getInt32(offset, true),
+                        materialNum: this.view.getInt32(offset + 4, true)
+                    });
+                }
+                return sides;
+            }
+
+            readBrushes() {
+                const lump = this.lumps[LumpType.LUMP_BRUSHES];
+                const count = lump.filelen / 4; // sizeof(DiskBrush)
+                const brushes = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 4;
+                    brushes.push({
+                        numSides: this.view.getUint16(offset, true),
+                        materialNum: this.view.getUint16(offset + 2, true)
+                    });
+                }
+                return brushes;
+            }
+
+            readModels() {
+                const lump = this.lumps[LumpType.LUMP_MODELS];
+                const count = lump.filelen / 48; // sizeof(dmodel_t)
+                const models = [];
+                for (let i = 0; i < count; i++) {
+                    const offset = lump.fileofs + i * 48;
+                    models.push({
+                        mins: [
+                            this.view.getFloat32(offset, true),
+                            this.view.getFloat32(offset + 4, true),
+                            this.view.getFloat32(offset + 8, true)
+                        ],
+                        maxs: [
+                            this.view.getFloat32(offset + 12, true),
+                            this.view.getFloat32(offset + 16, true),
+                            this.view.getFloat32(offset + 20, true)
+                        ],
+                        firstBrush: this.view.getUint32(offset + 24, true),
+                        numBrushes: this.view.getUint32(offset + 28, true)
+                    });
+                }
+                return models;
+            }
+
+            readEntities() {
+                const lump = this.lumps[LumpType.LUMP_ENTITIES];
+                const text = new TextDecoder().decode(
+                    new Uint8Array(this.view.buffer, lump.fileofs, lump.filelen)
+                );
+                const lines = text.split('\n').map(line => line.trim());
+                const entities = [];
+                let currentEntity = null;
+                let depth = 0;
+
+                for (const line of lines) {
+                    if (line === '{') {
+                        depth++;
+                        if (depth === 1) {
+                            currentEntity = { keyvalues: {} };
+                            entities.push(currentEntity);
+                        }
+                    } else if (line === '}') {
+                        depth--;
+                    } else if (depth === 1 && line.startsWith('"')) {
+                        const match = line.match(/"([^"]+)"\s+"([^"]+)"/);
+                        if (match) {
+                            currentEntity.keyvalues[match[1]] = match[2];
+                        }
+                    }
+                }
+                return entities;
+            }
+
+            // Polygonize a brush into vertices and faces
+            polygonizeBrush(brush, planes, brushSides, sideOffset) {
+                const polygons = {};
+                const numSides = brush.numSides;
+
+                for (let i = 0; i < numSides; i++) {
+                    const side = brushSides[sideOffset + i];
+                    const p0 = planes[side.plane];
+                    const points = [];
+
+                    for (let j = 0; j < numSides; j++) {
+                        if (j === i) continue;
+                        for (let k = 0; k < numSides; k++) {
+                            if (k === j || k === i) continue;
+                            const p1 = planes[brushSides[sideOffset + j].plane];
+                            const p2 = planes[brushSides[sideOffset + k].plane];
+
+                            // Solve for intersection point
+                            const P = [
+                                p0.normal,
+                                p1.normal,
+                                p2.normal
+                            ];
+                            const det = this.determinant3x3(P);
+                            if (Math.abs(det) < 1e-6) continue;
+
+                            const b = [p0.dist, p1.dist, p2.dist];
+                            const invP = this.invert3x3(P);
+                            const point = this.mat3Vec3Mul(invP, b);
+
+                            // Check if point is inside all other planes
+                            let valid = true;
+                            for (let m = 0; m < numSides; m++) {
+                                const pm = planes[brushSides[sideOffset + m].plane];
+                                const d = this.vec3Dot(pm.normal, point) - pm.dist;
+                                if (d > 0.008) {
+                                    valid = false;
+                                    break;
+                                }
+                            }
+                            if (valid && !points.some(pt => this.vec3Distance(pt, point) < 0.001)) {
+                                points.push(point);
+                            }
+                        }
+                    }
+
+                    if (points.length >= 3) {
+                        const material = side.materialNum;
+                        if (!polygons[material]) polygons[material] = [];
+                        polygons[material].push({ points, plane: p0 });
+                    }
+                }
+
+                return polygons;
+            }
+
+            // Math helpers
+            determinant3x3(m) {
+                return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+                       m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+                       m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+            }
+
+            invert3x3(m) {
+                const det = this.determinant3x3(m);
+                if (Math.abs(det) < 1e-6) return null;
+                const invDet = 1 / det;
+                const result = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+                result[0][0] = (m[1][1] * m[2][2] - m[1][2] * m[2][1]) * invDet;
+                result[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invDet;
+                result[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invDet;
+                result[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invDet;
+                result[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invDet;
+                result[1][2] = (m[0][2] * m[1][0] - m[0][0] * m[1][2]) * invDet;
+                result[2][0] = (m[1][0] * m[2][1] - m[1][1] * m[2][0]) * invDet;
+                result[2][1] = (m[0][1] * m[2][0] - m[0][0] * m[2][1]) * invDet;
+                result[2][2] = (m[0][0] * m[1][1] - m[0][1] * m[1][0]) * invDet;
+                return result;
+            }
+
+            mat3Vec3Mul(m, v) {
+                return [
+                    m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+                    m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+                    m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]
+                ];
+            }
+
+            vec3Dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+            vec3Distance(a, b) {
+                const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+        }
+
+        function parseBSP(arrayBuffer) {
+            const parser = new BSPParser(arrayBuffer);
+            const materials = parser.readMaterials();
+            const drawVerts = parser.readDrawVerts();
+            const drawIndices = parser.readDrawIndices();
+            const triangleSoups = parser.readTriangleSoups();
+            const planes = parser.readPlanes();
+            const brushSides = parser.readBrushSides();
+            const brushes = parser.readBrushes();
+            const models = parser.readModels();
+            const entities = parser.readEntities();
+
+            // Visualize DiskTriangleSoup meshes
+            triangleSoups.forEach(soup => {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const normals = [];
+                for (let i = 0; i < soup.vertexCount; i++) {
+                    const vert = drawVerts[soup.firstVertex + i];
+                    positions.push(vert.xyz[0], vert.xyz[2], vert.xyz[1]); // Swap Y and Z
+                    normals.push(vert.normal[0], vert.normal[2], vert.normal[1]);
+                }
+                const indices = drawIndices.slice(soup.firstIndex, soup.firstIndex + soup.indexCount);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                geometry.setIndex(indices);
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: `hsl(${soup.materialIndex * 137 % 360}, 50%, 50%)`,
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+            });
+
+            // Visualize worldspawn brushes (model 0)
+            let sideOffset = 0;
+            const worldModel = models[0];
+            for (let i = 0; i < worldModel.numBrushes; i++) {
+                const brush = brushes[worldModel.firstBrush + i];
+                const polygons = parser.polygonizeBrush(brush, planes, brushSides, sideOffset);
+                sideOffset += brush.numSides;
+
+                for (const materialNum in polygons) {
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = [];
+                    const indices = [];
+                    let index = 0;
+
+                    polygons[materialNum].forEach(poly => {
+                        const points = poly.points;
+                        for (let j = 2; j < points.length; j++) {
+                            positions.push(points[0][0], points[0][2], points[0][1]);
+                            positions.push(points[j-1][0], points[j-1][2], points[j-1][1]);
+                            positions.push(points[j][0], points[j][2], points[j][1]);
+                            indices.push(index++, index++, index++);
+                        }
+                    });
+
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geometry.setIndex(indices);
+                    geometry.computeVertexNormals();
+
+                    const material = new THREE.MeshPhongMaterial({
+                        color: `hsl(${materialNum * 137 % 360}, 50%, 50%)`,
+                        side: THREE.DoubleSide
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    scene.add(mesh);
+                }
+            }
+
+            // Visualize entities
+            entities.forEach(entity => {
+                const originStr = entity.keyvalues['origin'];
+                if (originStr) {
+                    const [x, y, z] = originStr.split(' ').map(Number);
+                    const geometry = new THREE.SphereGeometry(5, 16, 16);
+                    const material = new THREE.MeshBasicMaterial({
+                        color: entity.keyvalues['classname'] === 'light' ? 0xffff00 : 0x00ff00
+                    });
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.set(x, z, y); // Swap Y and Z
+                    scene.add(sphere);
+                }
+            });
+
+            dropZone.textContent = 'BSP Loaded Successfully';
+        }
+    </script>
+</body>
+</html>
