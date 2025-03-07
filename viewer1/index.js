@@ -398,7 +398,8 @@ class D3DBSPParser {
   readHeader(view) {
     this.header = Header.read(view, 0);
     this.header.lumps.forEach((lump, i) => {
-      lump.name = lumpNames[i] || `Unknown_${i}`;
+      const info = lumpInfo.find(info => info.index === i);
+      lump.name = info ? getLumpName(info) : `Unknown_${i}`;
     });
   }
   readMaterials(view) {
@@ -642,6 +643,39 @@ const Table = genJsx("table");
 const Tr = genJsx("tr");
 const Td = genJsx("td");
 const Strong = genJsx("strong");
+const lumpInfo = [
+  { index: 0, struct: Material, data: 'materials', tableId: 'materialsTable', displayMethod: 'table' },
+  { index: 1, struct: DiskGfxLightmap, data: 'lightbytes', tableId: 'lightbytesTable', displayMethod: 'custom', formatter: item => [
+    `Uint8Array(${item.r.length})`, `Uint8Array(${item.g.length})`, `Uint8Array(${item.b.length})`, `Uint8Array(${item.shadowMap.length})`
+  ]},
+  { index: 4, struct: Plane, data: 'planes', tableId: 'planesTable', displayMethod: 'table' },
+  { index: 5, struct: BrushSide, data: 'brushSides', tableId: 'brushSidesTable', displayMethod: 'table' },
+  { index: 6, struct: Brush, data: 'brushes', tableId: 'brushesTable', displayMethod: 'table' },
+  { index: 7, struct: TriangleSoup, data: 'triangleSoups', tableId: 'triangleSoupsTable', displayMethod: 'table' },
+  { index: 8, struct: Vertex, data: 'vertices', tableId: 'verticesTable', displayMethod: 'table' },
+  { index: 9, data: 'drawIndexes', tableId: 'drawIndexesTable', displayMethod: 'custom', formatter: item => [item] },
+  { index: 10, struct: DiskGfxCullGroup, data: 'cullGroups', tableId: 'cullGroupsTable', displayMethod: 'table' },
+  { index: 17, struct: DiskGfxPortalVertex, data: 'portalVerts', tableId: 'portalVertsTable', displayMethod: 'table' },
+  { index: 22, struct: DiskGfxAabbTree, data: 'aabbTrees', tableId: 'aabbTreesTable', displayMethod: 'table' },
+  { index: 23, struct: DiskGfxCell, data: 'cells', tableId: 'cellsTable', displayMethod: 'table' },
+  { index: 24, struct: DiskGfxPortal, data: 'portals', tableId: 'portalsTable', displayMethod: 'table' },
+  { index: 25, struct: DNode, data: 'nodes', tableId: 'nodesTable', displayMethod: 'table' },
+  { index: 26, struct: DLeaf, data: 'leafs', tableId: 'leafsTable', displayMethod: 'table' },
+  { index: 27, struct: DLeafBrush, data: 'leafBrushes', tableId: 'leafBrushesTable', displayMethod: 'table' },
+  { index: 28, struct: DLeafFace, data: 'leafSurfaces', tableId: 'leafSurfacesTable', displayMethod: 'table' },
+  { index: 29, struct: DiskCollisionVertex, data: 'collisionVerts', tableId: 'collisionVertsTable', displayMethod: 'table' },
+  { index: 30, struct: DiskCollisionEdge, data: 'collisionEdges', tableId: 'collisionEdgesTable', displayMethod: 'table' },
+  { index: 31, struct: DiskCollisionTriangle, data: 'collisionTris', tableId: 'collisionTrisTable', displayMethod: 'table' },
+  { index: 32, struct: DiskCollisionBorder, data: 'collisionBorders', tableId: 'collisionBordersTable', displayMethod: 'table' },
+  { index: 33, struct: DiskCollisionPartition, data: 'collisionPartitions', tableId: 'collisionPartitionsTable', displayMethod: 'table' },
+  { index: 34, struct: DiskCollisionAabbTree, data: 'collisionAabbs', tableId: 'collisionAabbsTable', displayMethod: 'table' },
+  { index: 35, struct: Model, data: 'models', tableId: 'modelsTable', displayMethod: 'table' },
+  { index: 36, data: 'visibility', tableId: 'visibilityTable', displayMethod: 'raw' },
+  { index: 37, data: 'entities', tableId: 'entitiesPre', displayMethod: 'raw' }
+];
+function getLumpName(info) {
+  return info.struct ? info.struct.name : info.data.charAt(0).toUpperCase() + info.data.slice(1);
+}
 class D3DBSPViewer {
   constructor(canvas) {
     this.parser = new D3DBSPParser();
@@ -658,102 +692,32 @@ class D3DBSPViewer {
     this.lumpsTable = Table({ id: 'lumpsTable' },
       Tr({}, Td({}, 'Name'), Td({}, 'Offset'), Td({}, 'Length'), Td({}, 'Action'))
     );
-    this.materialsTable = this.createTable('materialsTable', Material);
-    this.lightbytesTable = this.createTable('lightbytesTable', DiskGfxLightmap);
-    this.planesTable = this.createTable('planesTable', Plane);
-    this.brushSidesTable = this.createTable('brushSidesTable', BrushSide);
-    this.brushesTable = this.createTable('brushesTable', Brush);
-    this.triangleSoupsTable = this.createTable('triangleSoupsTable', TriangleSoup);
-    this.verticesTable = this.createTable('verticesTable', Vertex);
-    this.drawIndexesTable = Table({ id: 'drawIndexesTable' },
-      Tr({}, Td({}, 'Index'), Td({}, 'Value'))
-    );
-    this.cullGroupsTable = this.createTable('cullGroupsTable', DiskGfxCullGroup);
-    this.portalVertsTable = this.createTable('portalVertsTable', DiskGfxPortalVertex);
-    this.aabbTreesTable = this.createTable('aabbTreesTable', DiskGfxAabbTree);
-    this.cellsTable = this.createTable('cellsTable', DiskGfxCell);
-    this.portalsTable = this.createTable('portalsTable', DiskGfxPortal);
-    this.nodesTable = this.createTable('nodesTable', DNode);
-    this.leafsTable = this.createTable('leafsTable', DLeaf);
-    this.leafBrushesTable = this.createTable('leafBrushesTable', DLeafBrush);
-    this.leafSurfacesTable = this.createTable('leafSurfacesTable', DLeafFace);
-    this.collisionVertsTable = this.createTable('collisionVertsTable', DiskCollisionVertex);
-    this.collisionEdgesTable = this.createTable('collisionEdgesTable', DiskCollisionEdge);
-    this.collisionTrisTable = this.createTable('collisionTrisTable', DiskCollisionTriangle);
-    this.collisionBordersTable = this.createTable('collisionBordersTable', DiskCollisionBorder);
-    this.collisionPartitionsTable = this.createTable('collisionPartitionsTable', DiskCollisionPartition);
-    this.collisionAabbsTable = this.createTable('collisionAabbsTable', DiskCollisionAabbTree);
-    this.modelsTable = this.createTable('modelsTable', Model);
-    this.visibilityTable = Table({ id: 'visibilityTable' },
-      Tr({}, Td({}, 'Index'), Td({}, 'Data'))
-    );
-    this.entitiesPre = Pre({ id: 'entitiesPre' });
+    lumpInfo.forEach(info => {
+      if (info.displayMethod === 'table') {
+        this[info.tableId] = this.createTable(info.tableId, info.struct);
+      } else if (info.displayMethod === 'custom') {
+        const columns = info.data === 'drawIndexes' ? 1 : 4;
+        this[info.tableId] = Table({ id: info.tableId }, Tr({}, Td({}, 'Index'), ...Array(columns).fill().map(() => Td({}, 'Value'))));
+      } else if (info.displayMethod === 'raw') {
+        this[info.tableId] = info.data === 'visibility' ?
+          Table({ id: info.tableId }, Tr({}, Td({}, 'Index'), Td({}, 'Data'))) :
+          Pre({ id: info.tableId });
+      }
+    });
     this.lightmapsContainer = Div({ id: 'lightmapsContainer' });
     this.dom = Div({},
       canvas,
-      Div({ id: 'controls' },
-        this.dropzone,
-        this.lumpFilter,
-        this.generateBtn
-      ),
+      Div({ id: 'controls' }, this.dropzone, this.lumpFilter, this.generateBtn),
       H2({ id: 'HeaderHeading' }, 'Header'),
       Div({}, 'Ident: ', this.headerIdent),
       Div({}, 'Version: ', this.headerVersion),
       this.headerTable,
-      H2({ id: 'Lumps_OverviewHeading' }, 'Lumps Overview'),
+      H2({ id: 'LumpsOverviewHeading' }, 'Lumps Overview'),
       this.lumpsTable,
-      H2({ id: 'MaterialsHeading' }, 'Materials'),
-      this.materialsTable,
-      H2({ id: 'LightbytesHeading' }, 'Lightbytes'),
-      this.lightbytesTable,
-      H2({ id: 'PlanesHeading' }, 'Planes'),
-      this.planesTable,
-      H2({ id: 'BrushSidesHeading' }, 'Brush Sides'),
-      this.brushSidesTable,
-      H2({ id: 'BrushesHeading' }, 'Brushes'),
-      this.brushesTable,
-      H2({ id: 'TriangleSoupsHeading' }, 'Triangle Soups'),
-      this.triangleSoupsTable,
-      H2({ id: 'VerticesHeading' }, 'Vertices'),
-      this.verticesTable,
-      H2({ id: 'DrawIndexesHeading' }, 'Draw Indexes'),
-      this.drawIndexesTable,
-      H2({ id: 'CullGroupsHeading' }, 'Cull Groups'),
-      this.cullGroupsTable,
-      H2({ id: 'PortalVertsHeading' }, 'Portal Vertices'),
-      this.portalVertsTable,
-      H2({ id: 'AabbTreesHeading' }, 'AABB Trees'),
-      this.aabbTreesTable,
-      H2({ id: 'CellsHeading' }, 'Cells'),
-      this.cellsTable,
-      H2({ id: 'PortalsHeading' }, 'Portals'),
-      this.portalsTable,
-      H2({ id: 'NodesHeading' }, 'Nodes'),
-      this.nodesTable,
-      H2({ id: 'LeafsHeading' }, 'Leafs'),
-      this.leafsTable,
-      H2({ id: 'LeafBrushesHeading' }, 'Leaf Brushes'),
-      this.leafBrushesTable,
-      H2({ id: 'LeafSurfacesHeading' }, 'Leaf Surfaces'),
-      this.leafSurfacesTable,
-      H2({ id: 'CollisionVertsHeading' }, 'Collision Vertices'),
-      this.collisionVertsTable,
-      H2({ id: 'CollisionEdgesHeading' }, 'Collision Edges'),
-      this.collisionEdgesTable,
-      H2({ id: 'CollisionTrisHeading' }, 'Collision Triangles'),
-      this.collisionTrisTable,
-      H2({ id: 'CollisionBordersHeading' }, 'Collision Borders'),
-      this.collisionBordersTable,
-      H2({ id: 'CollisionPartitionsHeading' }, 'Collision Partitions'),
-      this.collisionPartitionsTable,
-      H2({ id: 'CollisionAabbsHeading' }, 'Collision AABBs'),
-      this.collisionAabbsTable,
-      H2({ id: 'ModelsHeading' }, 'Models'),
-      this.modelsTable,
-      H2({ id: 'VisibilityHeading' }, 'Visibility'),
-      this.visibilityTable,
-      H2({ id: 'EntitiesHeading' }, 'Entities'),
-      this.entitiesPre,
+      ...lumpInfo.map(info => [
+        H2({ id: `${getLumpName(info)}Heading` }, getLumpName(info)),
+        this[info.tableId]
+      ]).flat(),
       H2({ id: 'LightmapsHeading' }, 'Lightmaps'),
       this.lightmapsContainer
     );
@@ -805,36 +769,28 @@ class D3DBSPViewer {
       }
     });
   }
-  displayData() {
-    this.displayLumpsOverview();
-    this.displayHeader(this.parser.header);
-    this.displayMaterials(this.parser.materials);
-    this.displayLightbytes(this.parser.lightbytes);
-    this.displayPlanes(this.parser.planes);
-    this.displayBrushSides(this.parser.brushSides);
-    this.displayBrushes(this.parser.brushes);
-    this.displayTriangleSoups(this.parser.triangleSoups);
-    this.displayVertices(this.parser.vertices);
-    this.displayDrawIndexes(this.parser.drawIndexes);
-    this.displayCullGroups(this.parser.cullGroups);
-    this.displayPortalVerts(this.parser.portalVerts);
-    this.displayAabbTrees(this.parser.aabbTrees);
-    this.displayCells(this.parser.cells);
-    this.displayPortals(this.parser.portals);
-    this.displayNodes(this.parser.nodes);
-    this.displayLeafs(this.parser.leafs);
-    this.displayLeafBrushes(this.parser.leafBrushes);
-    this.displayLeafSurfaces(this.parser.leafSurfaces);
-    this.displayCollisionVerts(this.parser.collisionVerts);
-    this.displayCollisionEdges(this.parser.collisionEdges);
-    this.displayCollisionTris(this.parser.collisionTris);
-    this.displayCollisionBorders(this.parser.collisionBorders);
-    this.displayCollisionPartitions(this.parser.collisionPartitions);
-    this.displayCollisionAabbs(this.parser.collisionAabbs);
-    this.displayModels(this.parser.models);
-    this.displayVisibility(this.parser.visibility);
-    this.displayEntities(this.parser.entities);
-    this.displayLightmaps();
+  displayTable(tableId, data, structClass) {
+    const table = document.getElementById(tableId);
+    while (table.rows.length > 1) table.deleteRow(1);
+    const members = structClass.displayMembers || structClass.members;
+    data.slice(0, 10).forEach((item, i) => {
+      const row = table.insertRow();
+      row.insertCell().textContent = i;
+      members.forEach(m => {
+        row.insertCell().textContent = nice(item[m.name]);
+      });
+    });
+  }
+  displayCustomTable(tableId, data, formatter) {
+    const table = document.getElementById(tableId);
+    while (table.rows.length > 1) table.deleteRow(1);
+    data.slice(0, 10).forEach((item, i) => {
+      const row = table.insertRow();
+      row.insertCell().textContent = i;
+      formatter(item).forEach(value => {
+        row.insertCell().textContent = value;
+      });
+    });
   }
   displayLumpsOverview() {
     const table = this.lumpsTable;
@@ -842,7 +798,8 @@ class D3DBSPViewer {
     this.parser.header.lumps.forEach((lump, i) => {
       if (lump.length > 0) {
         const button = Button({}, 'View');
-        button.onclick = () => scrollToElement(`${lump.name.replace(/ /g, '_')}Heading`);
+        const headingId = `${lump.name}Heading`;
+        button.onclick = () => scrollToElement(headingId);
         table.append(
           Tr({ title: `Lump Index: ${i}` },
             Td({}, lump.name),
@@ -863,250 +820,6 @@ class D3DBSPViewer {
       Tr({}, Td({}, 'Ident'), Td({}, header.ident)),
       Tr({}, Td({}, 'Version'), Td({}, header.version))
     );
-  }
-  displayMaterials(materials) {
-    const table = this.materialsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = Material.displayMembers || Material.members;
-    materials.slice(0, 10).forEach((mat, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(mat[m.name]))))
-      );
-    });
-  }
-  displayLightbytes(lightbytes) {
-    const table = this.lightbytesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    lightbytes.slice(0, 10).forEach((lb, i) => {
-      table.append(
-        Tr({},
-          Td({}, i),
-          Td({}, `Uint8Array(${lb.r.length})`),
-          Td({}, `Uint8Array(${lb.g.length})`),
-          Td({}, `Uint8Array(${lb.b.length})`),
-          Td({}, `Uint8Array(${lb.shadowMap.length})`)
-        )
-      );
-    });
-  }
-  displayPlanes(planes) {
-    const table = this.planesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = Plane.displayMembers || Plane.members;
-    planes.slice(0, 10).forEach((plane, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(plane[m.name]))))
-      );
-    });
-  }
-  displayBrushSides(brushSides) {
-    const table = this.brushSidesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = BrushSide.displayMembers || BrushSide.members;
-    brushSides.slice(0, 10).forEach((side, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(side[m.name]))))
-      );
-    });
-  }
-  displayBrushes(brushes) {
-    const table = this.brushesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = Brush.displayMembers || Brush.members;
-    brushes.slice(0, 10).forEach((brush, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(brush[m.name]))))
-      );
-    });
-  }
-  displayTriangleSoups(triangleSoups) {
-    const table = this.triangleSoupsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = TriangleSoup.displayMembers || TriangleSoup.members;
-    triangleSoups.slice(0, 10).forEach((soup, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(soup[m.name]))))
-      );
-    });
-  }
-  displayVertices(vertices) {
-    const table = this.verticesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = Vertex.displayMembers || Vertex.members;
-    vertices.slice(0, 10).forEach((vertex, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(vertex[m.name]))))
-      );
-    });
-  }
-  displayDrawIndexes(drawIndexes) {
-    const table = this.drawIndexesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    Array.from(drawIndexes).slice(0, 10).forEach((idx, i) => {
-      table.append(
-        Tr({}, Td({}, i), Td({}, idx))
-      );
-    });
-  }
-  displayCullGroups(cullGroups) {
-    const table = this.cullGroupsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskGfxCullGroup.displayMembers || DiskGfxCullGroup.members;
-    cullGroups.slice(0, 10).forEach((cg, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(cg[m.name]))))
-      );
-    });
-  }
-  displayPortalVerts(portalVerts) {
-    const table = this.portalVertsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskGfxPortalVertex.displayMembers || DiskGfxPortalVertex.members;
-    portalVerts.slice(0, 10).forEach((pv, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(pv[m.name]))))
-      );
-    });
-  }
-  displayAabbTrees(aabbTrees) {
-    const table = this.aabbTreesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskGfxAabbTree.displayMembers || DiskGfxAabbTree.members;
-    aabbTrees.slice(0, 10).forEach((at, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(at[m.name]))))
-      );
-    });
-  }
-  displayCells(cells) {
-    const table = this.cellsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskGfxCell.displayMembers || DiskGfxCell.members;
-    cells.slice(0, 10).forEach((cell, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(cell[m.name]))))
-      );
-    });
-  }
-  displayPortals(portals) {
-    const table = this.portalsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskGfxPortal.displayMembers || DiskGfxPortal.displayMembers;
-    portals.slice(0, 10).forEach((portal, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(portal[m.name]))))
-      );
-    });
-  }
-  displayNodes(nodes) {
-    const table = this.nodesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DNode.displayMembers || DNode.members;
-    nodes.slice(0, 10).forEach((node, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(node[m.name]))))
-      );
-    });
-  }
-  displayLeafs(leafs) {
-    const table = this.leafsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DLeaf.displayMembers || DLeaf.members;
-    leafs.slice(0, 10).forEach((leaf, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(leaf[m.name]))))
-      );
-    });
-  }
-  displayLeafBrushes(leafBrushes) {
-    const table = this.leafBrushesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DLeafBrush.displayMembers || DLeafBrush.members;
-    leafBrushes.slice(0, 10).forEach((lb, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(lb[m.name]))))
-      );
-    });
-  }
-  displayLeafSurfaces(leafSurfaces) {
-    const table = this.leafSurfacesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DLeafFace.displayMembers || DLeafFace.members;
-    leafSurfaces.slice(0, 10).forEach((ls, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(ls[m.name]))))
-      );
-    });
-  }
-  displayCollisionVerts(collisionVerts) {
-    const table = this.collisionVertsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskCollisionVertex.displayMembers || DiskCollisionVertex.members;
-    collisionVerts.slice(0, 10).forEach((cv, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(cv[m.name]))))
-      );
-    });
-  }
-  displayCollisionEdges(collisionEdges) {
-    const table = this.collisionEdgesTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskCollisionEdge.displayMembers || DiskCollisionEdge.members;
-    collisionEdges.slice(0, 10).forEach((ce, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(ce[m.name]))))
-      );
-    });
-  }
-  displayCollisionTris(collisionTris) {
-    const table = this.collisionTrisTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskCollisionTriangle.displayMembers || DiskCollisionTriangle.members;
-    collisionTris.slice(0, 10).forEach((ct, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(ct[m.name]))))
-      );
-    });
-  }
-  displayCollisionBorders(collisionBorders) {
-    const table = this.collisionBordersTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskCollisionBorder.displayMembers || DiskCollisionBorder.members;
-    collisionBorders.slice(0, 10).forEach((cb, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(cb[m.name]))))
-      );
-    });
-  }
-  displayCollisionPartitions(collisionPartitions) {
-    const table = this.collisionPartitionsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskCollisionPartition.displayMembers || DiskCollisionPartition.members;
-    collisionPartitions.slice(0, 10).forEach((cp, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(cp[m.name]))))
-      );
-    });
-  }
-  displayCollisionAabbs(collisionAabbs) {
-    const table = this.collisionAabbsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = DiskCollisionAabbTree.displayMembers || DiskCollisionAabbTree.members;
-    collisionAabbs.slice(0, 10).forEach((ca, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(ca[m.name]))))
-      );
-    });
-  }
-  displayModels(models) {
-    const table = this.modelsTable;
-    while (table.rows.length > 1) table.deleteRow(1);
-    const members = Model.displayMembers || Model.members;
-    models.slice(0, 10).forEach((model, i) => {
-      table.append(
-        Tr({}, Td({}, i), ...members.map(m => Td({}, nice(model[m.name]))))
-      );
-    });
   }
   displayVisibility(visibility) {
     const table = this.visibilityTable;
@@ -1159,21 +872,26 @@ class D3DBSPViewer {
       ))
     );
   }
+  displayData() {
+    this.displayLumpsOverview();
+    this.displayHeader(this.parser.header);
+    lumpInfo.forEach(info => {
+      const data = info.index === 9 ? Array.from(this.parser[info.data]) : this.parser[info.data];
+      if (info.displayMethod === 'table') {
+        this.displayTable(info.tableId, data, info.struct);
+      } else if (info.displayMethod === 'custom') {
+        this.displayCustomTable(info.tableId, data, info.formatter);
+      } else if (info.displayMethod === 'raw') {
+        if (info.data === 'visibility') this.displayVisibility(data);
+        if (info.data === 'entities') this.displayEntities(data);
+      }
+    });
+    this.displayLightmaps();
+  }
 }
 function scrollToElement(id) {
   document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
 }
-const lumpNames = [
-  'materials', 'lightmaps', 'light grid hash', 'light grid values', 'planes',
-  'brushsides', 'brushes', 'trianglesoups', 'drawverts', 'drawindexes',
-  'cullgroups', 'cullgroupindexes', 'shadowverts', 'shadowindices',
-  'shadowclusters', 'shadowaabbtrees', 'shadowsources', 'portalverts',
-  'occluders', 'occluderplanes', 'occluderedges', 'occluderindexes',
-  'aabbtrees', 'cells', 'portals', 'nodes', 'leafs', 'leafbrushes',
-  'leafsurfaces', 'collisionverts', 'collisionedges', 'collisiontris',
-  'collisionborders', 'collisionparts', 'collisionaabbs', 'models',
-  'visibility', 'entdata', 'paths'
-];
 class Renderer {
   constructor(canvas) {
     this.scene = new THREE.Scene();
