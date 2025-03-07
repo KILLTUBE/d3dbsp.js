@@ -776,9 +776,10 @@ const Tr = genJsx("tr");
 const Td = genJsx("td");
 const Strong = genJsx("strong");
 class D3DBSPViewer {
-  constructor() {
+  dom = Div({}, 'D3DBSPViewer');
+  constructor(canvas) {
     this.parser = new D3DBSPParser()
-    this.renderer = new Renderer(document.getElementById('canvas'))
+    this.renderer = new Renderer(canvas)
     this.dropzone = document.getElementById('dropzone')
     this.tables = {
       lumps: document.getElementById('lumpsTable'),
@@ -1432,3 +1433,7 @@ class Renderer {
     });
   }
 }
+const canvas = Canvas({width: 640, height: 480});
+const viewer = new D3DBSPViewer(canvas)
+document.body.prepend(canvas, viewer.dom);
+window.viewer = viewer;
