@@ -116,24 +116,12 @@ class Lump extends Struct {
     { name: 'length', type: 'int32' },
     { name: 'offset', type: 'int32' }
   ];
-  constructor(offset, length, name) {
-    super();
-    this.offset = offset;
-    this.length = length;
-    this.name = name;
-  }
 }
 class Header extends Struct {
   static members = [
     { name: 'ident', type: 'string', length: 4 },
     { name: 'version', type: 'int32' }
   ];
-  constructor(ident, version, lumps) {
-    super();
-    this.ident = ident;
-    this.version = version;
-    this.lumps = lumps;
-  }
   static read(view, offset) {
     const instance = super.read(view, offset);
     instance.lumps = doTimes(39, i => Lump.read(view, offset + 8 + i * Lump.SIZE));
@@ -155,51 +143,26 @@ class Material extends Struct {
     { name: 'surfaceFlags', type: 'uint32' },
     { name: 'contentFlags', type: 'uint32' }
   ];
-  constructor(material, surfaceFlags, contentFlags) {
-    super();
-    this.material = material;
-    this.surfaceFlags = surfaceFlags;
-    this.contentFlags = contentFlags;
-  }
 }
 class DiskGfxLightmap extends Struct {
   static members = [
-    //{name: 'rgb',         type: 'uint8array', size: 1024 * 1024 * 3},
-    {name: 'r',         type: 'uint8array', size: 1024 * 1024},
-    {name: 'g',         type: 'uint8array', size: 1024 * 1024},
-    {name: 'b',         type: 'uint8array', size: 1024 * 1024},
-    {name: 'shadowMap', type: 'uint8array', size: 1024 * 1024}
+    { name: 'r', type: 'uint8array', size: 1024 * 1024 },
+    { name: 'g', type: 'uint8array', size: 1024 * 1024 },
+    { name: 'b', type: 'uint8array', size: 1024 * 1024 },
+    { name: 'shadowMap', type: 'uint8array', size: 1024 * 1024 }
   ];
-  constructor(r, g, b, shadowMap) {
-    super();
-    this.r = r;
-    this.g = g;
-    this.b = b;
-    this.shadowMap = shadowMap;
-  }
 }
 class Plane extends Struct {
   static members = [
     { name: 'normal', type: 'vec3' },
     { name: 'dist', type: 'float32' }
   ];
-  constructor(normal, dist) {
-    super();
-    this.normal = normal;
-    this.dist = dist;
-  }
 }
 class BrushSide extends Struct {
   static members = [
     { name: 'plane', type: 'uint32' },
     { name: 'materialNum', type: 'uint32' }
   ];
-  constructor(distance, plane, materialNum) {
-    super();
-    this.distance = distance;
-    this.plane = plane;
-    this.materialNum = materialNum;
-  }
   static read(view, offset) {
     const instance = super.read(view, offset);
     instance.distance = view.getFloat32(offset, true); // Overlaps plane, format quirk
@@ -211,11 +174,6 @@ class Brush extends Struct {
     { name: 'numSides', type: 'uint16' },
     { name: 'materialNum', type: 'uint16' }
   ];
-  constructor(numSides, materialNum) {
-    super();
-    this.numSides = numSides;
-    this.materialNum = materialNum;
-  }
 }
 class TriangleSoup extends Struct {
   static members = [
@@ -226,15 +184,6 @@ class TriangleSoup extends Struct {
     { name: 'indexCount', type: 'uint16' },
     { name: 'firstIndex', type: 'uint32' }
   ];
-  constructor(materialIndex, lightmapIndex, firstVertex, vertexCount, indexCount, firstIndex) {
-    super();
-    this.materialIndex = materialIndex;
-    this.lightmapIndex = lightmapIndex;
-    this.firstVertex = firstVertex;
-    this.vertexCount = vertexCount;
-    this.indexCount = indexCount;
-    this.firstIndex = firstIndex;
-  }
 }
 class Vertex extends Struct {
   static members = [
@@ -246,16 +195,6 @@ class Vertex extends Struct {
     { name: 'tangent', type: 'vec3' },
     { name: 'binormal', type: 'vec3' }
   ];
-  constructor(xyz, normal, color, texCoord, lmapCoord, tangent, binormal) {
-    super();
-    this.xyz = xyz;
-    this.normal = normal;
-    this.color = color;
-    this.texCoord = texCoord;
-    this.lmapCoord = lmapCoord;
-    this.tangent = tangent;
-    this.binormal = binormal;
-  }
 }
 class DiskGfxCullGroup extends Struct {
   static members = [
@@ -264,22 +203,11 @@ class DiskGfxCullGroup extends Struct {
     { name: 'firstSurface', type: 'int32' },
     { name: 'surfaceCount', type: 'int32' }
   ];
-  constructor(mins, maxs, firstSurface, surfaceCount) {
-    super();
-    this.mins = mins;
-    this.maxs = maxs;
-    this.firstSurface = firstSurface;
-    this.surfaceCount = surfaceCount;
-  }
 }
 class DiskGfxPortalVertex extends Struct {
   static members = [
     { name: 'xyz', type: 'vec3' }
   ];
-  constructor(xyz) {
-    super();
-    this.xyz = xyz;
-  }
 }
 class DiskGfxAabbTree extends Struct {
   static members = [
@@ -287,12 +215,6 @@ class DiskGfxAabbTree extends Struct {
     { name: 'surfaceCount', type: 'int32' },
     { name: 'childCount', type: 'int32' }
   ];
-  constructor(firstSurface, surfaceCount, childCount) {
-    super();
-    this.firstSurface = firstSurface;
-    this.surfaceCount = surfaceCount;
-    this.childCount = childCount;
-  }
 }
 class DiskGfxCell extends Struct {
   static members = [
@@ -306,18 +228,6 @@ class DiskGfxCell extends Struct {
     { name: 'firstOccluder', type: 'int32' },
     { name: 'occluderCount', type: 'int32' }
   ];
-  constructor(mins, maxs, aabbTreeIndex, firstPortal, portalCount, firstCullGroup, cullGroupCount, firstOccluder, occluderCount) {
-    super();
-    this.mins = mins;
-    this.maxs = maxs;
-    this.aabbTreeIndex = aabbTreeIndex;
-    this.firstPortal = firstPortal;
-    this.portalCount = portalCount;
-    this.firstCullGroup = firstCullGroup;
-    this.cullGroupCount = cullGroupCount;
-    this.firstOccluder = firstOccluder;
-    this.occluderCount = occluderCount;
-  }
 }
 class DiskGfxPortal extends Struct {
   static members = [
@@ -326,13 +236,6 @@ class DiskGfxPortal extends Struct {
     { name: 'firstPortalVertex', type: 'uint32' },
     { name: 'portalVertexCount', type: 'uint32' }
   ];
-  constructor(planeIndex, cellIndex, firstPortalVertex, portalVertexCount) {
-    super();
-    this.planeIndex = planeIndex;
-    this.cellIndex = cellIndex;
-    this.firstPortalVertex = firstPortalVertex;
-    this.portalVertexCount = portalVertexCount;
-  }
 }
 class DNode extends Struct {
   static members = [
@@ -341,13 +244,6 @@ class DNode extends Struct {
     { name: 'mins', type: 'int32', isArray: true, count: 3 },
     { name: 'maxs', type: 'int32', isArray: true, count: 3 }
   ];
-  constructor(planeNum, children, mins, maxs) {
-    super();
-    this.planeNum = planeNum;
-    this.children = children;
-    this.mins = mins;
-    this.maxs = maxs;
-  }
 }
 class DLeaf extends Struct {
   static members = [
@@ -361,47 +257,22 @@ class DLeaf extends Struct {
     { name: 'firstLightIndex', type: 'int32' },
     { name: 'numLights', type: 'uint32' }
   ];
-  constructor(cluster, area, firstLeafSurface, numLeafSurfaces, firstLeafBrush, numLeafBrushes, cellNum, firstLightIndex, numLights) {
-    super();
-    this.cluster = cluster;
-    this.area = area;
-    this.firstLeafSurface = firstLeafSurface;
-    this.numLeafSurfaces = numLeafSurfaces;
-    this.firstLeafBrush = firstLeafBrush;
-    this.numLeafBrushes = numLeafBrushes;
-    this.cellNum = cellNum;
-    this.firstLightIndex = firstLightIndex;
-    this.numLights = numLights;
-  }
 }
 class DLeafBrush extends Struct {
   static members = [
     { name: 'brush', type: 'int32' }
   ];
-  constructor(brush) {
-    super();
-    this.brush = brush;
-  }
 }
 class DLeafFace extends Struct {
   static members = [
     { name: 'face', type: 'int32' }
   ];
-  constructor(face) {
-    super();
-    this.face = face;
-  }
 }
 class DiskCollisionVertex extends Struct {
   static members = [
     { name: 'checkStamp', type: 'int32' },
     { name: 'xyz', type: 'vec3' }
   ];
-  constructor(checkStamp, xyz) {
-    super();
-    this.checkStamp = checkStamp;
-    this.xyz = xyz;
-  }
 }
 class DiskCollisionEdge extends Struct {
   static members = [
@@ -410,13 +281,6 @@ class DiskCollisionEdge extends Struct {
     { name: 'axis', type: 'vec3', isArray: true, count: 3 },
     { name: 'length', type: 'uint32' }
   ];
-  constructor(checkStamp, origin, axis, length) {
-    super();
-    this.checkStamp = checkStamp;
-    this.origin = origin;
-    this.axis = axis; // Array of 3 vec3s
-    this.length = length;
-  }
 }
 class DiskCollisionTriangle extends Struct {
   static members = [
@@ -426,14 +290,6 @@ class DiskCollisionTriangle extends Struct {
     { name: 'vertIndices', type: 'uint32', isArray: true, count: 3 },
     { name: 'edgeIndices', type: 'uint32', isArray: true, count: 3 }
   ];
-  constructor(plane, svec, tvec, vertIndices, edgeIndices) {
-    super();
-    this.plane = plane;
-    this.svec = svec;
-    this.tvec = tvec;
-    this.vertIndices = vertIndices;
-    this.edgeIndices = edgeIndices;
-  }
 }
 class DiskCollisionBorder extends Struct {
   static members = [
@@ -443,14 +299,6 @@ class DiskCollisionBorder extends Struct {
     { name: 'start', type: 'int32' },
     { name: 'length', type: 'int32' }
   ];
-  constructor(distEq, zBase, zSlope, start, length) {
-    super();
-    this.distEq = distEq;
-    this.zBase = zBase;
-    this.zSlope = zSlope;
-    this.start = start;
-    this.length = length;
-  }
 }
 class DiskCollisionPartition extends Struct {
   static members = [
@@ -460,14 +308,6 @@ class DiskCollisionPartition extends Struct {
     { name: 'firstTriIndex', type: 'uint32' },
     { name: 'firstBorderIndex', type: 'uint32' }
   ];
-  constructor(checkStamp, triCount, borderCount, firstTriIndex, firstBorderIndex) {
-    super();
-    this.checkStamp = checkStamp;
-    this.triCount = triCount;
-    this.borderCount = borderCount;
-    this.firstTriIndex = firstTriIndex;
-    this.firstBorderIndex = firstBorderIndex;
-  }
 }
 class DiskCollisionAabbTree extends Struct {
   static members = [
@@ -477,14 +317,6 @@ class DiskCollisionAabbTree extends Struct {
     { name: 'childCount', type: 'int16' },
     { name: 'u', type: 'int32' }
   ];
-  constructor(origin, halfSize, materialIndex, childCount, u) {
-    super();
-    this.origin = origin;
-    this.halfSize = halfSize;
-    this.materialIndex = materialIndex;
-    this.childCount = childCount;
-    this.u = u;
-  }
 }
 class Model extends Struct {
   static members = [
@@ -497,15 +329,4 @@ class Model extends Struct {
     { name: 'firstBrush', type: 'uint32' },
     { name: 'numBrushes', type: 'uint32' }
   ];
-  constructor(mins, maxs, firstTriangle, numTriangles, firstSurface, numSurfaces, firstBrush, numBrushes) {
-    super();
-    this.mins = mins;
-    this.maxs = maxs;
-    this.firstTriangle = firstTriangle;
-    this.numTriangles = numTriangles;
-    this.firstSurface = firstSurface;
-    this.numSurfaces = numSurfaces;
-    this.firstBrush = firstBrush;
-    this.numBrushes = numBrushes;
-  }
 }

@@ -1,62 +1,60 @@
 class D3DBSPParser {
-  constructor() {
-    this.header = new Header()
-    this.materials = []
-    this.lightbytes = []
-    this.planes = []
-    this.brushSides = []
-    this.brushes = []
-    this.triangleSoups = []
-    this.vertices = []
-    this.drawIndexes = new Uint16Array(0)
-    this.cullGroups = []
-    this.portalVerts = []
-    this.aabbTrees = []
-    this.cells = []
-    this.portals = []
-    this.nodes = []
-    this.leafs = []
-    this.leafBrushes = []
-    this.leafSurfaces = []
-    this.collisionVerts = []
-    this.collisionEdges = []
-    this.collisionTris = []
-    this.collisionBorders = []
-    this.collisionPartitions = []
-    this.collisionAabbs = []
-    this.models = []
-    this.visibility = new Uint8Array(0)
-    this.entities = new Uint8Array(0)
-  }
+  header = new Header();
+  materials = [];
+  lightbytes = [];
+  planes = [];
+  brushSides = [];
+  brushes = [];
+  triangleSoups = [];
+  vertices = [];
+  drawIndexes = new Uint16Array(0);
+  cullGroups = [];
+  portalVerts = [];
+  aabbTrees = [];
+  cells = [];
+  portals = [];
+  nodes = [];
+  leafs = [];
+  leafBrushes = [];
+  leafSurfaces = [];
+  collisionVerts = [];
+  collisionEdges = [];
+  collisionTris = [];
+  collisionBorders = [];
+  collisionPartitions = [];
+  collisionAabbs = [];
+  models = [];
+  visibility = new Uint8Array(0);
+  entities = new Uint8Array(0);
   parse(buffer) {
-    const view = new DataView(buffer)
-    this.readHeader(view)
-    this.readMaterials(view)
-    this.readLightbytes(view)
-    this.readPlanes(view)
-    this.readBrushSides(view)
-    this.readBrushes(view)
-    this.readTriangleSoups(view)
-    this.readVertices(view)
-    this.readDrawIndexes(view)
-    this.readCullGroups(view)
-    this.readPortalVerts(view)
-    this.readAabbTrees(view)
-    this.readCells(view)
-    this.readPortals(view)
-    this.readNodes(view)
-    this.readLeafs(view)
-    this.readLeafBrushes(view)
-    this.readLeafSurfaces(view)
-    this.readCollisionVerts(view)
-    this.readCollisionEdges(view)
-    this.readCollisionTris(view)
-    this.readCollisionBorders(view)
-    this.readCollisionPartitions(view)
-    this.readCollisionAabbs(view)
-    this.readModels(view)
-    this.readVisibility(view)
-    this.readEntities(view)
+    const view = new DataView(buffer);
+    this.readHeader(view);
+    this.readMaterials(view);
+    this.readLightbytes(view);
+    this.readPlanes(view);
+    this.readBrushSides(view);
+    this.readBrushes(view);
+    this.readTriangleSoups(view);
+    this.readVertices(view);
+    this.readDrawIndexes(view);
+    this.readCullGroups(view);
+    this.readPortalVerts(view);
+    this.readAabbTrees(view);
+    this.readCells(view);
+    this.readPortals(view);
+    this.readNodes(view);
+    this.readLeafs(view);
+    this.readLeafBrushes(view);
+    this.readLeafSurfaces(view);
+    this.readCollisionVerts(view);
+    this.readCollisionEdges(view);
+    this.readCollisionTris(view);
+    this.readCollisionBorders(view);
+    this.readCollisionPartitions(view);
+    this.readCollisionAabbs(view);
+    this.readModels(view);
+    this.readVisibility(view);
+    this.readEntities(view);
   }
   readHeader(view) {
     this.header = Header.read(view, 0)
@@ -350,62 +348,62 @@ class D3DBSPParser {
       lump.offset = sizes[i] > 0 ? offset : 0
       offset += sizes[i]
     })
-    this.header.write(view, 0)
-    offset = Header.SIZE
-    this.materials.forEach((m, i) => m.write(view, offset + i * Material.SIZE))
-    offset += sizes[0]
-    this.lightbytes.forEach((lb, i) => lb.write(view, offset + i * DiskGfxLightmap.SIZE))
-    offset += sizes[1]
-    offset += sizes[2] + sizes[3] // Skip zero-sized lumps
-    this.planes.forEach((p, i) => p.write(view, offset + i * Plane.SIZE))
-    offset += sizes[4]
-    this.brushSides.forEach((bs, i) => bs.write(view, offset + i * BrushSide.SIZE))
-    offset += sizes[5]
-    this.brushes.forEach((b, i) => b.write(view, offset + i * Brush.SIZE))
-    offset += sizes[6]
-    this.triangleSoups.forEach((ts, i) => ts.write(view, offset + i * TriangleSoup.SIZE))
-    offset += sizes[7]
-    this.vertices.forEach((v, i) => v.write(view, offset + i * Vertex.SIZE))
-    offset += sizes[8]
-    this.drawIndexes.forEach((idx, i) => view.setUint16(offset + i * 2, idx, true))
-    offset += sizes[9]
-    this.cullGroups.forEach((cg, i) => cg.write(view, offset + i * DiskGfxCullGroup.SIZE))
-    offset += sizes[10]
-    offset += sizes[11] + sizes[12] + sizes[13] + sizes[14] + sizes[15] + sizes[16] // Skip zero-sized
-    this.portalVerts.forEach((pv, i) => pv.write(view, offset + i * DiskGfxPortalVertex.SIZE))
-    offset += sizes[17]
-    offset += sizes[18] + sizes[19] + sizes[20] + sizes[21] // Skip zero-sized
-    this.aabbTrees.forEach((at, i) => at.write(view, offset + i * DiskGfxAabbTree.SIZE))
-    offset += sizes[22]
-    this.cells.forEach((c, i) => c.write(view, offset + i * DiskGfxCell.SIZE))
-    offset += sizes[23]
-    this.portals.forEach((p, i) => p.write(view, offset + i * DiskGfxPortal.SIZE))
-    offset += sizes[24]
-    this.nodes.forEach((n, i) => n.write(view, offset + i * DNode.SIZE))
-    offset += sizes[25]
-    this.leafs.forEach((l, i) => l.write(view, offset + i * DLeaf.SIZE))
-    offset += sizes[26]
-    this.leafBrushes.forEach((lb, i) => lb.write(view, offset + i * DLeafBrush.SIZE))
-    offset += sizes[27]
-    this.leafSurfaces.forEach((ls, i) => ls.write(view, offset + i * DLeafFace.SIZE))
-    offset += sizes[28]
-    this.collisionVerts.forEach((cv, i) => cv.write(view, offset + i * DiskCollisionVertex.SIZE))
-    offset += sizes[29]
-    this.collisionEdges.forEach((ce, i) => ce.write(view, offset + i * DiskCollisionEdge.SIZE))
-    offset += sizes[30]
-    this.collisionTris.forEach((ct, i) => ct.write(view, offset + i * DiskCollisionTriangle.SIZE))
-    offset += sizes[31]
-    this.collisionBorders.forEach((cb, i) => cb.write(view, offset + i * DiskCollisionBorder.SIZE))
-    offset += sizes[32]
-    this.collisionPartitions.forEach((cp, i) => cp.write(view, offset + i * DiskCollisionPartition.SIZE))
-    offset += sizes[33]
-    this.collisionAabbs.forEach((ca, i) => ca.write(view, offset + i * DiskCollisionAabbTree.SIZE))
-    offset += sizes[34]
-    this.models.forEach((m, i) => m.write(view, offset + i * Model.SIZE))
-    offset += sizes[35]
-    new Uint8Array(view.buffer, offset, this.visibility.length).set(this.visibility)
-    offset += sizes[36]
-    new Uint8Array(view.buffer, offset, this.entities.length).set(this.entities)
-    return buffer
+    this.header.write(view, 0);
+    offset = Header.SIZE;
+    this.materials.forEach((m, i) => m.write(view, offset + i * Material.SIZE));
+    offset += sizes[0];
+    this.lightbytes.forEach((lb, i) => lb.write(view, offset + i * DiskGfxLightmap.SIZE));
+    offset += sizes[1];
+    offset += sizes[2] + sizes[3] // Skip zero-sized lumps;
+    this.planes.forEach((p, i) => p.write(view, offset + i * Plane.SIZE));
+    offset += sizes[4];
+    this.brushSides.forEach((bs, i) => bs.write(view, offset + i * BrushSide.SIZE));
+    offset += sizes[5];
+    this.brushes.forEach((b, i) => b.write(view, offset + i * Brush.SIZE));
+    offset += sizes[6];
+    this.triangleSoups.forEach((ts, i) => ts.write(view, offset + i * TriangleSoup.SIZE));
+    offset += sizes[7];
+    this.vertices.forEach((v, i) => v.write(view, offset + i * Vertex.SIZE));
+    offset += sizes[8];
+    this.drawIndexes.forEach((idx, i) => view.setUint16(offset + i * 2, idx, true));
+    offset += sizes[9];
+    this.cullGroups.forEach((cg, i) => cg.write(view, offset + i * DiskGfxCullGroup.SIZE));
+    offset += sizes[10];
+    offset += sizes[11] + sizes[12] + sizes[13] + sizes[14] + sizes[15] + sizes[16] // Skip zero-sized;
+    this.portalVerts.forEach((pv, i) => pv.write(view, offset + i * DiskGfxPortalVertex.SIZE));
+    offset += sizes[17];
+    offset += sizes[18] + sizes[19] + sizes[20] + sizes[21] // Skip zero-sized;
+    this.aabbTrees.forEach((at, i) => at.write(view, offset + i * DiskGfxAabbTree.SIZE));
+    offset += sizes[22];
+    this.cells.forEach((c, i) => c.write(view, offset + i * DiskGfxCell.SIZE));
+    offset += sizes[23];
+    this.portals.forEach((p, i) => p.write(view, offset + i * DiskGfxPortal.SIZE));
+    offset += sizes[24];
+    this.nodes.forEach((n, i) => n.write(view, offset + i * DNode.SIZE));
+    offset += sizes[25];
+    this.leafs.forEach((l, i) => l.write(view, offset + i * DLeaf.SIZE));
+    offset += sizes[26];
+    this.leafBrushes.forEach((lb, i) => lb.write(view, offset + i * DLeafBrush.SIZE));
+    offset += sizes[27];
+    this.leafSurfaces.forEach((ls, i) => ls.write(view, offset + i * DLeafFace.SIZE));
+    offset += sizes[28];
+    this.collisionVerts.forEach((cv, i) => cv.write(view, offset + i * DiskCollisionVertex.SIZE));
+    offset += sizes[29];
+    this.collisionEdges.forEach((ce, i) => ce.write(view, offset + i * DiskCollisionEdge.SIZE));
+    offset += sizes[30];
+    this.collisionTris.forEach((ct, i) => ct.write(view, offset + i * DiskCollisionTriangle.SIZE));
+    offset += sizes[31];
+    this.collisionBorders.forEach((cb, i) => cb.write(view, offset + i * DiskCollisionBorder.SIZE));
+    offset += sizes[32];
+    this.collisionPartitions.forEach((cp, i) => cp.write(view, offset + i * DiskCollisionPartition.SIZE));
+    offset += sizes[33];
+    this.collisionAabbs.forEach((ca, i) => ca.write(view, offset + i * DiskCollisionAabbTree.SIZE));
+    offset += sizes[34];
+    this.models.forEach((m, i) => m.write(view, offset + i * Model.SIZE));
+    offset += sizes[35];
+    new Uint8Array(view.buffer, offset, this.visibility.length).set(this.visibility);
+    offset += sizes[36];
+    new Uint8Array(view.buffer, offset, this.entities.length).set(this.entities);
+    return buffer;
   }
 }
