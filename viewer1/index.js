@@ -1,5 +1,4 @@
 function doTimes(n, fn) {
-  //return Array(n).fill().map((_, i) => fn(i));
   const arr = new Array(n);
   for (let i = 0; i < n; i++) {
     arr[i] = fn(i);
@@ -390,253 +389,252 @@ class D3DBSPParser {
     this.readEntities(view);
   }
   readHeader(view) {
-    this.header = Header.read(view, 0)
+    this.header = Header.read(view, 0);
     this.header.lumps.forEach((lump, i) => {
-      lump.name = lumpNames[i] || `Unknown_${i}`
-    })
+      lump.name = lumpNames[i] || `Unknown_${i}`;
+    });
   }
   readMaterials(view) {
-    const lump = this.header.lumps[0]
-    this.materials = []
+    const lump = this.header.lumps[0];
+    this.materials = [];
     if (lump.length > 0) {
-      const count = lump.length / Material.SIZE
+      const count = lump.length / Material.SIZE;
       for (let i = 0; i < count; i++) {
-        this.materials.push(Material.read(view, lump.offset + i * Material.SIZE))
+        this.materials.push(Material.read(view, lump.offset + i * Material.SIZE));
       }
     }
   }
   readLightbytes(view) {
-    const lump = this.header.lumps[1]
-    this.lightbytes = []
+    const lump = this.header.lumps[1];
+    this.lightbytes = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskGfxLightmap.SIZE
+      const count = lump.length / DiskGfxLightmap.SIZE;
       for (let i = 0; i < count; i++) {
-        this.lightbytes.push(DiskGfxLightmap.read(view, lump.offset + i * DiskGfxLightmap.SIZE))
+        this.lightbytes.push(DiskGfxLightmap.read(view, lump.offset + i * DiskGfxLightmap.SIZE));
       }
     }
   }
   readPlanes(view) {
-    const lump = this.header.lumps[4]
-    this.planes = []
+    const lump = this.header.lumps[4];
+    this.planes = [];
     if (lump.length > 0) {
-      const count = lump.length / Plane.SIZE
+      const count = lump.length / Plane.SIZE;
       for (let i = 0; i < count; i++) {
-        this.planes.push(Plane.read(view, lump.offset + i * Plane.SIZE))
+        this.planes.push(Plane.read(view, lump.offset + i * Plane.SIZE));
       }
     }
   }
   readBrushSides(view) {
-    const lump = this.header.lumps[5]
-    this.brushSides = []
+    const lump = this.header.lumps[5];
+    this.brushSides = [];
     if (lump.length > 0) {
       const count = lump.length / BrushSide.SIZE;
-      // console.log("count", count);
       for (let i = 0; i < count; i++) {
-        this.brushSides.push(BrushSide.read(view, lump.offset + i * BrushSide.SIZE))
+        this.brushSides.push(BrushSide.read(view, lump.offset + i * BrushSide.SIZE));
       }
     }
   }
   readBrushes(view) {
-    const lump = this.header.lumps[6]
-    this.brushes = []
+    const lump = this.header.lumps[6];
+    this.brushes = [];
     if (lump.length > 0) {
-      const count = lump.length / Brush.SIZE
+      const count = lump.length / Brush.SIZE;
       for (let i = 0; i < count; i++) {
-        this.brushes.push(Brush.read(view, lump.offset + i * Brush.SIZE))
+        this.brushes.push(Brush.read(view, lump.offset + i * Brush.SIZE));
       }
     }
   }
   readTriangleSoups(view) {
-    const lump = this.header.lumps[7]
-    this.triangleSoups = []
+    const lump = this.header.lumps[7];
+    this.triangleSoups = [];
     if (lump.length > 0) {
-      const count = lump.length / TriangleSoup.SIZE
+      const count = lump.length / TriangleSoup.SIZE;
       for (let i = 0; i < count; i++) {
-        this.triangleSoups.push(TriangleSoup.read(view, lump.offset + i * TriangleSoup.SIZE))
+        this.triangleSoups.push(TriangleSoup.read(view, lump.offset + i * TriangleSoup.SIZE));
       }
     }
   }
   readVertices(view) {
-    const lump = this.header.lumps[8]
-    this.vertices = []
+    const lump = this.header.lumps[8];
+    this.vertices = [];
     if (lump.length > 0) {
-      const count = lump.length / Vertex.SIZE
+      const count = lump.length / Vertex.SIZE;
       for (let i = 0; i < count; i++) {
-        this.vertices.push(Vertex.read(view, lump.offset + i * Vertex.SIZE))
+        this.vertices.push(Vertex.read(view, lump.offset + i * Vertex.SIZE));
       }
     }
   }
   readDrawIndexes(view) {
-    const lump = this.header.lumps[9]
-    this.drawIndexes = lump.length > 0 ? new Uint16Array(view.buffer, lump.offset, lump.length / 2) : new Uint16Array(0)
+    const lump = this.header.lumps[9];
+    this.drawIndexes = lump.length > 0 ? new Uint16Array(view.buffer, lump.offset, lump.length / 2) : new Uint16Array(0);
   }
   readCullGroups(view) {
-    const lump = this.header.lumps[10]
-    this.cullGroups = []
+    const lump = this.header.lumps[10];
+    this.cullGroups = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskGfxCullGroup.SIZE
+      const count = lump.length / DiskGfxCullGroup.SIZE;
       for (let i = 0; i < count; i++) {
-        this.cullGroups.push(DiskGfxCullGroup.read(view, lump.offset + i * DiskGfxCullGroup.SIZE))
+        this.cullGroups.push(DiskGfxCullGroup.read(view, lump.offset + i * DiskGfxCullGroup.SIZE));
       }
     }
   }
   readPortalVerts(view) {
-    const lump = this.header.lumps[17]
-    this.portalVerts = []
+    const lump = this.header.lumps[17];
+    this.portalVerts = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskGfxPortalVertex.SIZE
+      const count = lump.length / DiskGfxPortalVertex.SIZE;
       for (let i = 0; i < count; i++) {
-        this.portalVerts.push(DiskGfxPortalVertex.read(view, lump.offset + i * DiskGfxPortalVertex.SIZE))
+        this.portalVerts.push(DiskGfxPortalVertex.read(view, lump.offset + i * DiskGfxPortalVertex.SIZE));
       }
     }
   }
   readAabbTrees(view) {
-    const lump = this.header.lumps[22]
-    this.aabbTrees = []
+    const lump = this.header.lumps[22];
+    this.aabbTrees = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskGfxAabbTree.SIZE
+      const count = lump.length / DiskGfxAabbTree.SIZE;
       for (let i = 0; i < count; i++) {
-        this.aabbTrees.push(DiskGfxAabbTree.read(view, lump.offset + i * DiskGfxAabbTree.SIZE))
+        this.aabbTrees.push(DiskGfxAabbTree.read(view, lump.offset + i * DiskGfxAabbTree.SIZE));
       }
     }
   }
   readCells(view) {
-    const lump = this.header.lumps[23]
-    this.cells = []
+    const lump = this.header.lumps[23];
+    this.cells = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskGfxCell.SIZE
+      const count = lump.length / DiskGfxCell.SIZE;
       for (let i = 0; i < count; i++) {
-        this.cells.push(DiskGfxCell.read(view, lump.offset + i * DiskGfxCell.SIZE))
+        this.cells.push(DiskGfxCell.read(view, lump.offset + i * DiskGfxCell.SIZE));
       }
     }
   }
   readPortals(view) {
-    const lump = this.header.lumps[24]
-    this.portals = []
+    const lump = this.header.lumps[24];
+    this.portals = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskGfxPortal.SIZE
+      const count = lump.length / DiskGfxPortal.SIZE;
       for (let i = 0; i < count; i++) {
-        this.portals.push(DiskGfxPortal.read(view, lump.offset + i * DiskGfxPortal.SIZE))
+        this.portals.push(DiskGfxPortal.read(view, lump.offset + i * DiskGfxPortal.SIZE));
       }
     }
   }
   readNodes(view) {
-    const lump = this.header.lumps[25]
-    this.nodes = []
+    const lump = this.header.lumps[25];
+    this.nodes = [];
     if (lump.length > 0) {
-      const count = lump.length / DNode.SIZE
+      const count = lump.length / DNode.SIZE;
       for (let i = 0; i < count; i++) {
-        this.nodes.push(DNode.read(view, lump.offset + i * DNode.SIZE))
+        this.nodes.push(DNode.read(view, lump.offset + i * DNode.SIZE));
       }
     }
   }
   readLeafs(view) {
-    const lump = this.header.lumps[26]
-    this.leafs = []
+    const lump = this.header.lumps[26];
+    this.leafs = [];
     if (lump.length > 0) {
-      const count = lump.length / DLeaf.SIZE
+      const count = lump.length / DLeaf.SIZE;
       for (let i = 0; i < count; i++) {
-        this.leafs.push(DLeaf.read(view, lump.offset + i * DLeaf.SIZE))
+        this.leafs.push(DLeaf.read(view, lump.offset + i * DLeaf.SIZE));
       }
     }
   }
   readLeafBrushes(view) {
-    const lump = this.header.lumps[27]
-    this.leafBrushes = []
+    const lump = this.header.lumps[27];
+    this.leafBrushes = [];
     if (lump.length > 0) {
-      const count = lump.length / DLeafBrush.SIZE
+      const count = lump.length / DLeafBrush.SIZE;
       for (let i = 0; i < count; i++) {
-        this.leafBrushes.push(DLeafBrush.read(view, lump.offset + i * DLeafBrush.SIZE))
+        this.leafBrushes.push(DLeafBrush.read(view, lump.offset + i * DLeafBrush.SIZE));
       }
     }
   }
   readLeafSurfaces(view) {
-    const lump = this.header.lumps[28]
-    this.leafSurfaces = []
+    const lump = this.header.lumps[28];
+    this.leafSurfaces = [];
     if (lump.length > 0) {
-      const count = lump.length / DLeafFace.SIZE
+      const count = lump.length / DLeafFace.SIZE;
       for (let i = 0; i < count; i++) {
-        this.leafSurfaces.push(DLeafFace.read(view, lump.offset + i * DLeafFace.SIZE))
+        this.leafSurfaces.push(DLeafFace.read(view, lump.offset + i * DLeafFace.SIZE));
       }
     }
   }
   readCollisionVerts(view) {
-    const lump = this.header.lumps[29]
-    this.collisionVerts = []
+    const lump = this.header.lumps[29];
+    this.collisionVerts = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskCollisionVertex.SIZE
+      const count = lump.length / DiskCollisionVertex.SIZE;
       for (let i = 0; i < count; i++) {
-        this.collisionVerts.push(DiskCollisionVertex.read(view, lump.offset + i * DiskCollisionVertex.SIZE))
+        this.collisionVerts.push(DiskCollisionVertex.read(view, lump.offset + i * DiskCollisionVertex.SIZE));
       }
     }
   }
   readCollisionEdges(view) {
-    const lump = this.header.lumps[30]
-    this.collisionEdges = []
+    const lump = this.header.lumps[30];
+    this.collisionEdges = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskCollisionEdge.SIZE
+      const count = lump.length / DiskCollisionEdge.SIZE;
       for (let i = 0; i < count; i++) {
-        this.collisionEdges.push(DiskCollisionEdge.read(view, lump.offset + i * DiskCollisionEdge.SIZE))
+        this.collisionEdges.push(DiskCollisionEdge.read(view, lump.offset + i * DiskCollisionEdge.SIZE));
       }
     }
   }
   readCollisionTris(view) {
-    const lump = this.header.lumps[31]
-    this.collisionTris = []
+    const lump = this.header.lumps[31];
+    this.collisionTris = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskCollisionTriangle.SIZE
+      const count = lump.length / DiskCollisionTriangle.SIZE;
       for (let i = 0; i < count; i++) {
-        this.collisionTris.push(DiskCollisionTriangle.read(view, lump.offset + i * DiskCollisionTriangle.SIZE))
+        this.collisionTris.push(DiskCollisionTriangle.read(view, lump.offset + i * DiskCollisionTriangle.SIZE));
       }
     }
   }
   readCollisionBorders(view) {
-    const lump = this.header.lumps[32]
-    this.collisionBorders = []
+    const lump = this.header.lumps[32];
+    this.collisionBorders = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskCollisionBorder.SIZE
+      const count = lump.length / DiskCollisionBorder.SIZE;
       for (let i = 0; i < count; i++) {
-        this.collisionBorders.push(DiskCollisionBorder.read(view, lump.offset + i * DiskCollisionBorder.SIZE))
+        this.collisionBorders.push(DiskCollisionBorder.read(view, lump.offset + i * DiskCollisionBorder.SIZE));
       }
     }
   }
   readCollisionPartitions(view) {
-    const lump = this.header.lumps[33]
-    this.collisionPartitions = []
+    const lump = this.header.lumps[33];
+    this.collisionPartitions = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskCollisionPartition.SIZE
+      const count = lump.length / DiskCollisionPartition.SIZE;
       for (let i = 0; i < count; i++) {
-        this.collisionPartitions.push(DiskCollisionPartition.read(view, lump.offset + i * DiskCollisionPartition.SIZE))
+        this.collisionPartitions.push(DiskCollisionPartition.read(view, lump.offset + i * DiskCollisionPartition.SIZE));
       }
     }
   }
   readCollisionAabbs(view) {
-    const lump = this.header.lumps[34]
-    this.collisionAabbs = []
+    const lump = this.header.lumps[34];
+    this.collisionAabbs = [];
     if (lump.length > 0) {
-      const count = lump.length / DiskCollisionAabbTree.SIZE
+      const count = lump.length / DiskCollisionAabbTree.SIZE;
       for (let i = 0; i < count; i++) {
-        this.collisionAabbs.push(DiskCollisionAabbTree.read(view, lump.offset + i * DiskCollisionAabbTree.SIZE))
+        this.collisionAabbs.push(DiskCollisionAabbTree.read(view, lump.offset + i * DiskCollisionAabbTree.SIZE));
       }
     }
   }
   readModels(view) {
-    const lump = this.header.lumps[35]
-    this.models = []
+    const lump = this.header.lumps[35];
+    this.models = [];
     if (lump.length > 0) {
-      const count = lump.length / Model.SIZE
+      const count = lump.length / Model.SIZE;
       for (let i = 0; i < count; i++) {
-        this.models.push(Model.read(view, lump.offset + i * Model.SIZE))
+        this.models.push(Model.read(view, lump.offset + i * Model.SIZE));
       }
     }
   }
   readVisibility(view) {
-    const lump = this.header.lumps[36]
-    this.visibility = lump.length > 0 ? new Uint8Array(view.buffer, lump.offset, lump.length) : new Uint8Array(0)
+    const lump = this.header.lumps[36];
+    this.visibility = lump.length > 0 ? new Uint8Array(view.buffer, lump.offset, lump.length) : new Uint8Array(0);
   }
   readEntities(view) {
-    const lump = this.header.lumps[37]
-    this.entities = lump.length > 0 ? new Uint8Array(view.buffer, lump.offset, lump.length) : new Uint8Array(0)
+    const lump = this.header.lumps[37];
+    this.entities = lump.length > 0 ? new Uint8Array(view.buffer, lump.offset, lump.length) : new Uint8Array(0);
   }
   write() {
     const sizes = [
@@ -671,23 +669,23 @@ class D3DBSPParser {
       this.visibility.length,
       this.entities.length,
       0 // LUMP_PATHCONNECTIONS
-    ]
-    const totalSize = Header.SIZE + sizes.reduce((a, b) => a + b, 0)
-    const buffer = new ArrayBuffer(totalSize)
-    const view = new DataView(buffer)
-    let offset = Header.SIZE
+    ];
+    const totalSize = Header.SIZE + sizes.reduce((a, b) => a + b, 0);
+    const buffer = new ArrayBuffer(totalSize);
+    const view = new DataView(buffer);
+    let offset = Header.SIZE;
     this.header.lumps.forEach((lump, i) => {
-      lump.length = sizes[i]
-      lump.offset = sizes[i] > 0 ? offset : 0
-      offset += sizes[i]
-    })
+      lump.length = sizes[i];
+      lump.offset = sizes[i] > 0 ? offset : 0;
+      offset += sizes[i];
+    });
     this.header.write(view, 0);
     offset = Header.SIZE;
     this.materials.forEach((m, i) => m.write(view, offset + i * Material.SIZE));
     offset += sizes[0];
     this.lightbytes.forEach((lb, i) => lb.write(view, offset + i * DiskGfxLightmap.SIZE));
     offset += sizes[1];
-    offset += sizes[2] + sizes[3] // Skip zero-sized lumps;
+    offset += sizes[2] + sizes[3]; // Skip zero-sized lumps
     this.planes.forEach((p, i) => p.write(view, offset + i * Plane.SIZE));
     offset += sizes[4];
     this.brushSides.forEach((bs, i) => bs.write(view, offset + i * BrushSide.SIZE));
@@ -702,10 +700,10 @@ class D3DBSPParser {
     offset += sizes[9];
     this.cullGroups.forEach((cg, i) => cg.write(view, offset + i * DiskGfxCullGroup.SIZE));
     offset += sizes[10];
-    offset += sizes[11] + sizes[12] + sizes[13] + sizes[14] + sizes[15] + sizes[16] // Skip zero-sized;
+    offset += sizes[11] + sizes[12] + sizes[13] + sizes[14] + sizes[15] + sizes[16]; // Skip zero-sized
     this.portalVerts.forEach((pv, i) => pv.write(view, offset + i * DiskGfxPortalVertex.SIZE));
     offset += sizes[17];
-    offset += sizes[18] + sizes[19] + sizes[20] + sizes[21] // Skip zero-sized;
+    offset += sizes[18] + sizes[19] + sizes[20] + sizes[21]; // Skip zero-sized
     this.aabbTrees.forEach((at, i) => at.write(view, offset + i * DiskGfxAabbTree.SIZE));
     offset += sizes[22];
     this.cells.forEach((c, i) => c.write(view, offset + i * DiskGfxCell.SIZE));
@@ -744,12 +742,13 @@ class D3DBSPParser {
 function genJsx(tagname) {
   return (props, ...children) => {
     const ret = document.createElement(tagname);
-    if (props.style) {
-      // console.log("style", props.style);
-      Object.assign(ret.style, props.style);
-      delete props.style;
+    if (props) {
+      if (props.style) {
+        Object.assign(ret.style, props.style);
+        delete props.style;
+      }
+      Object.assign(ret, props);
     }
-    Object.assign(ret, props);
     children = children.flat();
     ret.append(...children);
     return ret;
@@ -776,48 +775,155 @@ const Tr = genJsx("tr");
 const Td = genJsx("td");
 const Strong = genJsx("strong");
 class D3DBSPViewer {
-  dom = Div({}, 'D3DBSPViewer');
   constructor(canvas) {
-    this.parser = new D3DBSPParser()
-    this.renderer = new Renderer(canvas)
-    this.dropzone = document.getElementById('dropzone')
-    this.tables = {
-      lumps: document.getElementById('lumpsTable'),
-      header: {
-        ident: document.getElementById('ident'),
-        version: document.getElementById('version'),
-        table: document.getElementById('headerTable')
-      },
-      materials: document.getElementById('materialsTable'),
-      lightbytes: document.getElementById('lightbytesTable'),
-      planes: document.getElementById('planesTable'),
-      brushSides: document.getElementById('brushSidesTable'),
-      brushes: document.getElementById('brushesTable'),
-      triangleSoups: document.getElementById('triangleSoupsTable'),
-      vertices: document.getElementById('verticesTable'),
-      drawIndexes: document.getElementById('drawIndexesTable'),
-      cullGroups: document.getElementById('cullGroupsTable'),
-      portalVerts: document.getElementById('portalVertsTable'),
-      aabbTrees: document.getElementById('aabbTreesTable'),
-      cells: document.getElementById('cellsTable'),
-      portals: document.getElementById('portalsTable'),
-      nodes: document.getElementById('nodesTable'),
-      leafs: document.getElementById('leafsTable'),
-      leafBrushes: document.getElementById('leafBrushesTable'),
-      leafSurfaces: document.getElementById('leafSurfacesTable'),
-      collisionVerts: document.getElementById('collisionVertsTable'),
-      collisionEdges: document.getElementById('collisionEdgesTable'),
-      collisionTris: document.getElementById('collisionTrisTable'),
-      collisionBorders: document.getElementById('collisionBordersTable'),
-      collisionPartitions: document.getElementById('collisionPartitionsTable'),
-      collisionAabbs: document.getElementById('collisionAabbsTable'),
-      models: document.getElementById('modelsTable'),
-      visibility: document.getElementById('visibilityTable'),
-      entities: document.getElementById('entitiesPre')
+    this.parser = new D3DBSPParser();
+    this.renderer = new Renderer(canvas);
+    this.lightmapCanvases = [];
+    // Define UI elements using JSX
+    this.dropzone = Div({ id: 'dropzone' }, 'Drop .d3dbsp file here');
+    this.lumpFilter = Input({ id: 'lumpFilter', type: 'text', placeholder: 'Filter lumps...' });
+    this.generateBtn = Button({ id: 'generateBtn' }, 'Generate .d3dbsp');
+    // Header elements
+    this.headerIdent = Span({ id: 'ident' });
+    this.headerVersion = Span({ id: 'version' });
+    this.headerTable = Table({ id: 'headerTable' },
+      Tr({}, Td({}, 'Field'), Td({}, 'Value'))
+    );
+    // Dynamically generated tables
+    this.lumpsTable = Table({ id: 'lumpsTable' },
+      Tr({},
+        Td({}, 'Name'),
+        Td({}, 'Offset'),
+        Td({}, 'Length'),
+        Td({}, 'Action')
+      )
+    );
+    this.materialsTable = this.createTable('materialsTable', Material);
+    this.lightbytesTable = this.createTable('lightbytesTable', DiskGfxLightmap);
+    this.planesTable = this.createTable('planesTable', Plane);
+    this.brushSidesTable = this.createTable('brushSidesTable', BrushSide);
+    this.brushesTable = this.createTable('brushesTable', Brush);
+    this.triangleSoupsTable = this.createTable('triangleSoupsTable', TriangleSoup);
+    this.verticesTable = this.createTable('verticesTable', Vertex);
+    this.drawIndexesTable = Table({ id: 'drawIndexesTable' },
+      Tr({}, Td({}, 'Index'), Td({}, 'Value'))
+    );
+    this.cullGroupsTable = this.createTable('cullGroupsTable', DiskGfxCullGroup);
+    this.portalVertsTable = this.createTable('portalVertsTable', DiskGfxPortalVertex);
+    this.aabbTreesTable = this.createTable('aabbTreesTable', DiskGfxAabbTree);
+    this.cellsTable = this.createTable('cellsTable', DiskGfxCell);
+    this.portalsTable = this.createTable('portalsTable', DiskGfxPortal);
+    this.nodesTable = this.createTable('nodesTable', DNode);
+    this.leafsTable = this.createTable('leafsTable', DLeaf);
+    this.leafBrushesTable = this.createTable('leafBrushesTable', DLeafBrush);
+    this.leafSurfacesTable = this.createTable('leafSurfacesTable', DLeafFace);
+    this.collisionVertsTable = this.createTable('collisionVertsTable', DiskCollisionVertex);
+    this.collisionEdgesTable = this.createTable('collisionEdgesTable', DiskCollisionEdge);
+    this.collisionTrisTable = this.createTable('collisionTrisTable', DiskCollisionTriangle);
+    this.collisionBordersTable = this.createTable('collisionBordersTable', DiskCollisionBorder);
+    this.collisionPartitionsTable = this.createTable('collisionPartitionsTable', DiskCollisionPartition);
+    this.collisionAabbsTable = this.createTable('collisionAabbsTable', DiskCollisionAabbTree);
+    this.modelsTable = this.createTable('modelsTable', Model);
+    this.visibilityTable = Table({ id: 'visibilityTable' },
+      Tr({}, Td({}, 'Index'), Td({}, 'Data'))
+    );
+    this.entitiesPre = Pre({ id: 'entitiesPre' });
+    this.lightmapsContainer = Div({ id: 'lightmapsContainer' });
+    // Assemble the UI structure
+    this.dom = Div({},
+      canvas,
+      Div({ id: 'controls' },
+        this.dropzone,
+        this.lumpFilter,
+        this.generateBtn
+      ),
+      H2({ id: 'HeaderHeading' }, 'Header'),
+      Div({}, 'Ident: ', this.headerIdent),
+      Div({}, 'Version: ', this.headerVersion),
+      this.headerTable,
+      H2({ id: 'Lumps_OverviewHeading' }, 'Lumps Overview'),
+      this.lumpsTable,
+      H2({ id: 'MaterialsHeading' }, 'Materials'),
+      this.materialsTable,
+      H2({ id: 'LightbytesHeading' }, 'Lightbytes'),
+      this.lightbytesTable,
+      H2({ id: 'PlanesHeading' }, 'Planes'),
+      this.planesTable,
+      H2({ id: 'BrushSidesHeading' }, 'Brush Sides'),
+      this.brushSidesTable,
+      H2({ id: 'BrushesHeading' }, 'Brushes'),
+      this.brushesTable,
+      H2({ id: 'TriangleSoupsHeading' }, 'Triangle Soups'),
+      this.triangleSoupsTable,
+      H2({ id: 'VerticesHeading' }, 'Vertices'),
+      this.verticesTable,
+      H2({ id: 'DrawIndexesHeading' }, 'Draw Indexes'),
+      this.drawIndexesTable,
+      H2({ id: 'CullGroupsHeading' }, 'Cull Groups'),
+      this.cullGroupsTable,
+      H2({ id: 'PortalVertsHeading' }, 'Portal Vertices'),
+      this.portalVertsTable,
+      H2({ id: 'AabbTreesHeading' }, 'AABB Trees'),
+      this.aabbTreesTable,
+      H2({ id: 'CellsHeading' }, 'Cells'),
+      this.cellsTable,
+      H2({ id: 'PortalsHeading' }, 'Portals'),
+      this.portalsTable,
+      H2({ id: 'NodesHeading' }, 'Nodes'),
+      this.nodesTable,
+      H2({ id: 'LeafsHeading' }, 'Leafs'),
+      this.leafsTable,
+      H2({ id: 'LeafBrushesHeading' }, 'Leaf Brushes'),
+      this.leafBrushesTable,
+      H2({ id: 'LeafSurfacesHeading' }, 'Leaf Surfaces'),
+      this.leafSurfacesTable,
+      H2({ id: 'CollisionVertsHeading' }, 'Collision Vertices'),
+      this.collisionVertsTable,
+      H2({ id: 'CollisionEdgesHeading' }, 'Collision Edges'),
+      this.collisionEdgesTable,
+      H2({ id: 'CollisionTrisHeading' }, 'Collision Triangles'),
+      this.collisionTrisTable,
+      H2({ id: 'CollisionBordersHeading' }, 'Collision Borders'),
+      this.collisionBordersTable,
+      H2({ id: 'CollisionPartitionsHeading' }, 'Collision Partitions'),
+      this.collisionPartitionsTable,
+      H2({ id: 'CollisionAabbsHeading' }, 'Collision AABBs'),
+      this.collisionAabbsTable,
+      H2({ id: 'ModelsHeading' }, 'Models'),
+      this.modelsTable,
+      H2({ id: 'VisibilityHeading' }, 'Visibility'),
+      this.visibilityTable,
+      H2({ id: 'EntitiesHeading' }, 'Entities'),
+      this.entitiesPre,
+      H2({ id: 'LightmapsHeading' }, 'Lightmaps'),
+      this.lightmapsContainer
+    );
+    // Set up event listeners and functionality
+    this.setupEventListeners();
+    this.setupGenerateButton();
+    this.setupSearchFilter();
+  }
+  createTable(id, structClass) {
+    const headers = ['Index'];
+    if (structClass && structClass.members) {
+      structClass.members.forEach(member => {
+        if (member.type.startsWith('vec')) {
+          const dim = parseInt(member.type.slice(3));
+          for (let i = 0; i < dim; i++) {
+            headers.push(`${member.name} ${['X', 'Y', 'Z', 'W'][i]}`);
+          }
+        } else if (member.isArray) {
+          for (let i = 0; i < member.count; i++) {
+            headers.push(`${member.name}[${i}]`);
+          }
+        } else {
+          headers.push(member.name);
+        }
+      });
+    } else {
+      headers.push('Data');
     }
-    this.setupEventListeners()
-    this.setupGenerateButton()
-    this.setupSearchFilter()
+    return Table({ id }, Tr({}, ...headers.map(h => Td({}, h))));
   }
   setupEventListeners() {
     this.dropzone.addEventListener('dragover', e => e.preventDefault());
@@ -839,28 +945,24 @@ class D3DBSPViewer {
     });
   }
   setupGenerateButton() {
-    const btn = document.getElementById('generateBtn')
-    btn.addEventListener('click', () => {
-      const buffer = this.parser.write()
-      const blob = new Blob([buffer], { type: 'application/octet-stream' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'generated.d3dbsp'
-      a.click()
-      URL.revokeObjectURL(url)
-    })
+    this.generateBtn.addEventListener('click', () => {
+      const buffer = this.parser.write();
+      const blob = new Blob([buffer], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = A({ href: url, download: 'generated.d3dbsp' });
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   }
   setupSearchFilter() {
-    const filterInput = document.getElementById('lumpFilter')
-    filterInput.addEventListener('input', () => {
-      const filter = filterInput.value.toLowerCase()
-      const rows = this.tables.lumps.rows
+    this.lumpFilter.addEventListener('input', () => {
+      const filter = this.lumpFilter.value.toLowerCase();
+      const rows = this.lumpsTable.rows;
       for (let i = 1; i < rows.length; i++) {
-        const name = rows[i].cells[0].textContent.toLowerCase()
-        rows[i].style.display = name.includes(filter) ? '' : 'none'
+        const name = rows[i].cells[0].textContent.toLowerCase();
+        rows[i].style.display = name.includes(filter) ? '' : 'none';
       }
-    })
+    });
   }
   displayData() {
     this.displayLumpsOverview();
@@ -893,417 +995,405 @@ class D3DBSPViewer {
     this.displayEntities(this.parser.entities);
     this.displayLightmaps();
   }
-  lightmapCanvases = [];
-  // Display lightmaps as canvases
-  displayLightmaps() {
-    const container = document.getElementById('lightmapsContainer');
-    container.innerHTML = ''; // Clear previous content
-    if (this.parser.lightbytes.length === 0) {
-      container.textContent = 'No lightmaps available.';
-      return;
-    }
-    for (const lightmap of this.parser.lightbytes) {
-      // Helper function to create a canvas from Uint8Array data
-      const createCanvas = (data, width, height, isGrayscale = false) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData(width, height);
-        if (isGrayscale) {
-          // Convert grayscale to RGBA
-          for (let i = 0; i < data.length; i++) {
-            const value = data[i];
-            const offset = i * 4;
-            imageData.data[offset] = value;     // R
-            imageData.data[offset + 1] = value; // G
-            imageData.data[offset + 2] = value; // B
-            imageData.data[offset + 3] = 255;   // A
-          }
-        } else {
-          // Use RGBA data directly
-          imageData.data.set(data);
-        }
-        ctx.putImageData(imageData, 0, 0);
-        return canvas;
-      };
-      // Create canvases for r, g, b, and shadowMap
-      const rCanvas = createCanvas(lightmap.r, 512, 512);
-      const gCanvas = createCanvas(lightmap.g, 512, 512);
-      const bCanvas = createCanvas(lightmap.b, 512, 512);
-      const shadowCanvas = createCanvas(lightmap.shadowMap, 1024, 1024, true);
-      this.lightmapCanvases.push({r: rCanvas, g: gCanvas, b: bCanvas, shadow: shadowCanvas});
-      // Style canvases (optional)
-      [rCanvas, gCanvas, bCanvas, shadowCanvas].forEach(canvas => {
-        canvas.style.margin = '10px';
-        canvas.style.border = '1px solid #ccc';
-      });
-      // Append canvases with labels
-      container.appendChild(document.createTextNode('Lightmap R: '));
-      container.appendChild(document.createElement('br'));
-      container.appendChild(rCanvas);
-      container.appendChild(document.createElement('br'));
-      container.appendChild(document.createTextNode('Lightmap G: '));
-      container.appendChild(document.createElement('br'));
-      container.appendChild(gCanvas);
-      container.appendChild(document.createElement('br'));
-      container.appendChild(document.createTextNode('Lightmap B: '));
-      container.appendChild(document.createElement('br'));
-      container.appendChild(bCanvas);
-      container.appendChild(document.createElement('br'));
-      container.appendChild(document.createTextNode('Shadow Map: '));
-      container.appendChild(document.createElement('br'));
-      container.appendChild(shadowCanvas);
-      container.appendChild(document.createElement('br'));
-    }
-  }
   displayLumpsOverview() {
-    const table = this.tables.lumps
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.lumpsTable.rows.length > 1) {
+      this.lumpsTable.deleteRow(1);
     }
     this.parser.header.lumps.forEach((lump, i) => {
       if (lump.length > 0) {
-        const row = table.insertRow()
-        row.insertCell().textContent = lump.name
-        row.insertCell().textContent = lump.offset
-        row.insertCell().textContent = lump.length
-        const buttonCell = row.insertCell()
-        const button = document.createElement('button')
-        button.textContent = 'View'
-        button.onclick = () => scrollToElement(`${lump.name.replace(/ /g, '_')}Heading`)
-        buttonCell.appendChild(button)
-        row.title = `Lump Index: ${i}`
+        const row = this.lumpsTable.insertRow();
+        row.insertCell().textContent = lump.name;
+        row.insertCell().textContent = lump.offset;
+        row.insertCell().textContent = lump.length;
+        const buttonCell = row.insertCell();
+        const button = Button({}, 'View');
+        button.onclick = () => scrollToElement(`${lump.name.replace(/ /g, '_')}Heading`);
+        buttonCell.appendChild(button);
+        row.title = `Lump Index: ${i}`;
       }
-    })
+    });
   }
   displayHeader(header) {
-    this.tables.header.ident.textContent = header.ident
-    this.tables.header.version.textContent = header.version
-    while (this.tables.header.table.rows.length > 2) {
-      this.tables.header.table.deleteRow(2)
+    this.headerIdent.textContent = header.ident;
+    this.headerVersion.textContent = header.version;
+    while (this.headerTable.rows.length > 1) {
+      this.headerTable.deleteRow(1);
     }
+    const identRow = this.headerTable.insertRow();
+    identRow.insertCell().textContent = 'Ident';
+    identRow.insertCell().textContent = header.ident;
+    const versionRow = this.headerTable.insertRow();
+    versionRow.insertCell().textContent = 'Version';
+    versionRow.insertCell().textContent = header.version;
   }
   displayMaterials(materials) {
-    const table = this.tables.materials
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.materialsTable.rows.length > 1) {
+      this.materialsTable.deleteRow(1);
     }
     materials.slice(0, 10).forEach((mat, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = mat.material
-      row.insertCell().textContent = mat.surfaceFlags
-      row.insertCell().textContent = mat.contentFlags
-    })
+      const row = this.materialsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = mat.material;
+      row.insertCell().textContent = mat.surfaceFlags;
+      row.insertCell().textContent = mat.contentFlags;
+    });
   }
   displayLightbytes(lightbytes) {
-    const table = this.tables.lightbytes
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.lightbytesTable.rows.length > 1) {
+      this.lightbytesTable.deleteRow(1);
     }
     lightbytes.slice(0, 10).forEach((lb, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = 'Large data (4MB)'
-    })
+      const row = this.lightbytesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = 'Large data';
+      row.insertCell().textContent = 'Large data';
+      row.insertCell().textContent = 'Large data';
+      row.insertCell().textContent = 'Large data';
+    });
   }
   displayPlanes(planes) {
-    const table = this.tables.planes
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.planesTable.rows.length > 1) {
+      this.planesTable.deleteRow(1);
     }
     planes.slice(0, 10).forEach((plane, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = plane.normal[0].toFixed(2)
-      row.insertCell().textContent = plane.normal[1].toFixed(2)
-      row.insertCell().textContent = plane.normal[2].toFixed(2)
-      row.insertCell().textContent = plane.dist.toFixed(2)
-    })
+      const row = this.planesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = plane.normal[0].toFixed(2);
+      row.insertCell().textContent = plane.normal[1].toFixed(2);
+      row.insertCell().textContent = plane.normal[2].toFixed(2);
+      row.insertCell().textContent = plane.dist.toFixed(2);
+    });
   }
   displayBrushSides(brushSides) {
-    const table = this.tables.brushSides
-    while (table.rows.length > 1) {
-      table.deleteRow(1);
+    while (this.brushSidesTable.rows.length > 1) {
+      this.brushSidesTable.deleteRow(1);
     }
     brushSides.slice(0, 10).forEach((side, i) => {
-      const row = table.insertRow();
+      const row = this.brushSidesTable.insertRow();
       row.insertCell().textContent = i;
       row.insertCell().textContent = side.distance;
       row.insertCell().textContent = side.plane;
       row.insertCell().textContent = side.materialNum;
-    })
+    });
   }
   displayBrushes(brushes) {
-    const table = this.tables.brushes
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.brushesTable.rows.length > 1) {
+      this.brushesTable.deleteRow(1);
     }
     brushes.slice(0, 10).forEach((brush, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = brush.numSides
-      row.insertCell().textContent = brush.materialNum
-    })
+      const row = this.brushesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = brush.numSides;
+      row.insertCell().textContent = brush.materialNum;
+    });
   }
   displayTriangleSoups(triangleSoups) {
-    const table = this.tables.triangleSoups
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.triangleSoupsTable.rows.length > 1) {
+      this.triangleSoupsTable.deleteRow(1);
     }
     triangleSoups.slice(0, 10).forEach((soup, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = soup.materialIndex
-      row.insertCell().textContent = soup.lightmapIndex
-      row.insertCell().textContent = soup.firstVertex
-      row.insertCell().textContent = soup.vertexCount
-      row.insertCell().textContent = soup.indexCount
-      row.insertCell().textContent = soup.firstIndex
-    })
+      const row = this.triangleSoupsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = soup.materialIndex;
+      row.insertCell().textContent = soup.lightmapIndex;
+      row.insertCell().textContent = soup.firstVertex;
+      row.insertCell().textContent = soup.vertexCount;
+      row.insertCell().textContent = soup.indexCount;
+      row.insertCell().textContent = soup.firstIndex;
+    });
   }
   displayVertices(vertices) {
-    const table = this.tables.vertices
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.verticesTable.rows.length > 1) {
+      this.verticesTable.deleteRow(1);
     }
     vertices.slice(0, 10).forEach((vertex, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = vertex.xyz[0].toFixed(2)
-      row.insertCell().textContent = vertex.xyz[1].toFixed(2)
-      row.insertCell().textContent = vertex.xyz[2].toFixed(2)
-      row.insertCell().textContent = vertex.normal[0].toFixed(2)
-      row.insertCell().textContent = vertex.normal[1].toFixed(2)
-      row.insertCell().textContent = vertex.normal[2].toFixed(2)
-    })
+      const row = this.verticesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = vertex.xyz[0].toFixed(2);
+      row.insertCell().textContent = vertex.xyz[1].toFixed(2);
+      row.insertCell().textContent = vertex.xyz[2].toFixed(2);
+      row.insertCell().textContent = vertex.normal[0].toFixed(2);
+      row.insertCell().textContent = vertex.normal[1].toFixed(2);
+      row.insertCell().textContent = vertex.normal[2].toFixed(2);
+      row.insertCell().textContent = vertex.color;
+      row.insertCell().textContent = vertex.texCoord[0].toFixed(2);
+      row.insertCell().textContent = vertex.texCoord[1].toFixed(2);
+      row.insertCell().textContent = vertex.lmapCoord[0].toFixed(2);
+      row.insertCell().textContent = vertex.lmapCoord[1].toFixed(2);
+      row.insertCell().textContent = vertex.tangent[0].toFixed(2);
+      row.insertCell().textContent = vertex.tangent[1].toFixed(2);
+      row.insertCell().textContent = vertex.tangent[2].toFixed(2);
+      row.insertCell().textContent = vertex.binormal[0].toFixed(2);
+      row.insertCell().textContent = vertex.binormal[1].toFixed(2);
+      row.insertCell().textContent = vertex.binormal[2].toFixed(2);
+    });
   }
   displayDrawIndexes(drawIndexes) {
-    const table = this.tables.drawIndexes
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.drawIndexesTable.rows.length > 1) {
+      this.drawIndexesTable.deleteRow(1);
     }
     Array.from(drawIndexes).slice(0, 10).forEach((idx, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = idx
-    })
+      const row = this.drawIndexesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = idx;
+    });
   }
   displayCullGroups(cullGroups) {
-    const table = this.tables.cullGroups
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.cullGroupsTable.rows.length > 1) {
+      this.cullGroupsTable.deleteRow(1);
     }
     cullGroups.slice(0, 10).forEach((cg, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = cg.mins.join(', ')
-      row.insertCell().textContent = cg.maxs.join(', ')
-      row.insertCell().textContent = cg.firstSurface
-      row.insertCell().textContent = cg.surfaceCount
-    })
+      const row = this.cullGroupsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = cg.mins[0].toFixed(2);
+      row.insertCell().textContent = cg.mins[1].toFixed(2);
+      row.insertCell().textContent = cg.mins[2].toFixed(2);
+      row.insertCell().textContent = cg.maxs[0].toFixed(2);
+      row.insertCell().textContent = cg.maxs[1].toFixed(2);
+      row.insertCell().textContent = cg.maxs[2].toFixed(2);
+      row.insertCell().textContent = cg.firstSurface;
+      row.insertCell().textContent = cg.surfaceCount;
+    });
   }
   displayPortalVerts(portalVerts) {
-    const table = this.tables.portalVerts
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.portalVertsTable.rows.length > 1) {
+      this.portalVertsTable.deleteRow(1);
     }
     portalVerts.slice(0, 10).forEach((pv, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = pv.xyz.join(', ')
-    })
+      const row = this.portalVertsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = pv.xyz[0].toFixed(2);
+      row.insertCell().textContent = pv.xyz[1].toFixed(2);
+      row.insertCell().textContent = pv.xyz[2].toFixed(2);
+    });
   }
   displayAabbTrees(aabbTrees) {
-    const table = this.tables.aabbTrees
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.aabbTreesTable.rows.length > 1) {
+      this.aabbTreesTable.deleteRow(1);
     }
     aabbTrees.slice(0, 10).forEach((at, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = at.firstSurface
-      row.insertCell().textContent = at.surfaceCount
-      row.insertCell().textContent = at.childCount
-    })
+      const row = this.aabbTreesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = at.firstSurface;
+      row.insertCell().textContent = at.surfaceCount;
+      row.insertCell().textContent = at.childCount;
+    });
   }
   displayCells(cells) {
-    const table = this.tables.cells
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.cellsTable.rows.length > 1) {
+      this.cellsTable.deleteRow(1);
     }
     cells.slice(0, 10).forEach((cell, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = cell.mins.join(', ')
-      row.insertCell().textContent = cell.maxs.join(', ')
-      row.insertCell().textContent = cell.aabbTreeIndex
-      row.insertCell().textContent = cell.firstPortal
-      row.insertCell().textContent = cell.portalCount
-    })
+      const row = this.cellsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = cell.mins[0].toFixed(2);
+      row.insertCell().textContent = cell.mins[1].toFixed(2);
+      row.insertCell().textContent = cell.mins[2].toFixed(2);
+      row.insertCell().textContent = cell.maxs[0].toFixed(2);
+      row.insertCell().textContent = cell.maxs[1].toFixed(2);
+      row.insertCell().textContent = cell.maxs[2].toFixed(2);
+      row.insertCell().textContent = cell.aabbTreeIndex;
+      row.insertCell().textContent = cell.firstPortal;
+      row.insertCell().textContent = cell.portalCount;
+      row.insertCell().textContent = cell.firstCullGroup;
+      row.insertCell().textContent = cell.cullGroupCount;
+      row.insertCell().textContent = cell.firstOccluder;
+      row.insertCell().textContent = cell.occluderCount;
+    });
   }
   displayPortals(portals) {
-    const table = this.tables.portals
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.portalsTable.rows.length > 1) {
+      this.portalsTable.deleteRow(1);
     }
     portals.slice(0, 10).forEach((portal, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = portal.planeIndex
-      row.insertCell().textContent = portal.cellIndex
-      row.insertCell().textContent = portal.firstPortalVertex
-      row.insertCell().textContent = portal.portalVertexCount
-    })
+      const row = this.portalsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = portal.planeIndex;
+      row.insertCell().textContent = portal.cellIndex;
+      row.insertCell().textContent = portal.firstPortalVertex;
+      row.insertCell().textContent = portal.portalVertexCount;
+    });
   }
   displayNodes(nodes) {
-    const table = this.tables.nodes
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.nodesTable.rows.length > 1) {
+      this.nodesTable.deleteRow(1);
     }
     nodes.slice(0, 10).forEach((node, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = node.planeNum
-      row.insertCell().textContent = node.children.join(', ')
-      row.insertCell().textContent = node.mins.join(', ')
-      row.insertCell().textContent = node.maxs.join(', ')
-    })
+      const row = this.nodesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = node.planeNum;
+      row.insertCell().textContent = node.children[0];
+      row.insertCell().textContent = node.children[1];
+      row.insertCell().textContent = node.mins[0];
+      row.insertCell().textContent = node.mins[1];
+      row.insertCell().textContent = node.mins[2];
+      row.insertCell().textContent = node.maxs[0];
+      row.insertCell().textContent = node.maxs[1];
+      row.insertCell().textContent = node.maxs[2];
+    });
   }
   displayLeafs(leafs) {
-    const table = this.tables.leafs
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.leafsTable.rows.length > 1) {
+      this.leafsTable.deleteRow(1);
     }
     leafs.slice(0, 10).forEach((leaf, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = leaf.cluster
-      row.insertCell().textContent = leaf.area
-      row.insertCell().textContent = leaf.firstLeafSurface
-      row.insertCell().textContent = leaf.numLeafSurfaces
-      row.insertCell().textContent = leaf.firstLeafBrush
-      row.insertCell().textContent = leaf.numLeafBrushes
-    })
+      const row = this.leafsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = leaf.cluster;
+      row.insertCell().textContent = leaf.area;
+      row.insertCell().textContent = leaf.firstLeafSurface;
+      row.insertCell().textContent = leaf.numLeafSurfaces;
+      row.insertCell().textContent = leaf.firstLeafBrush;
+      row.insertCell().textContent = leaf.numLeafBrushes;
+      row.insertCell().textContent = leaf.cellNum;
+      row.insertCell().textContent = leaf.firstLightIndex;
+      row.insertCell().textContent = leaf.numLights;
+    });
   }
   displayLeafBrushes(leafBrushes) {
-    const table = this.tables.leafBrushes
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.leafBrushesTable.rows.length > 1) {
+      this.leafBrushesTable.deleteRow(1);
     }
     leafBrushes.slice(0, 10).forEach((lb, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = lb.brush
-    })
+      const row = this.leafBrushesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = lb.brush;
+    });
   }
   displayLeafSurfaces(leafSurfaces) {
-    const table = this.tables.leafSurfaces
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.leafSurfacesTable.rows.length > 1) {
+      this.leafSurfacesTable.deleteRow(1);
     }
     leafSurfaces.slice(0, 10).forEach((ls, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = ls.face
-    })
+      const row = this.leafSurfacesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = ls.face;
+    });
   }
   displayCollisionVerts(collisionVerts) {
-    const table = this.tables.collisionVerts
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.collisionVertsTable.rows.length > 1) {
+      this.collisionVertsTable.deleteRow(1);
     }
     collisionVerts.slice(0, 10).forEach((cv, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = cv.checkStamp
-      row.insertCell().textContent = cv.xyz.join(', ')
-    })
+      const row = this.collisionVertsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = cv.checkStamp;
+      row.insertCell().textContent = cv.xyz[0].toFixed(2);
+      row.insertCell().textContent = cv.xyz[1].toFixed(2);
+      row.insertCell().textContent = cv.xyz[2].toFixed(2);
+    });
   }
   displayCollisionEdges(collisionEdges) {
-    const table = this.tables.collisionEdges
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.collisionEdgesTable.rows.length > 1) {
+      this.collisionEdgesTable.deleteRow(1);
     }
     collisionEdges.slice(0, 10).forEach((ce, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = ce.checkStamp
-      row.insertCell().textContent = ce.origin.join(', ')
-      row.insertCell().textContent = ce.length
-    })
+      const row = this.collisionEdgesTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = ce.checkStamp;
+      row.insertCell().textContent = ce.origin[0].toFixed(2);
+      row.insertCell().textContent = ce.origin[1].toFixed(2);
+      row.insertCell().textContent = ce.origin[2].toFixed(2);
+      row.insertCell().textContent = ce.axis[0][0].toFixed(2);
+      row.insertCell().textContent = ce.axis[0][1].toFixed(2);
+      row.insertCell().textContent = ce.axis[0][2].toFixed(2);
+      row.insertCell().textContent = ce.axis[1][0].toFixed(2);
+      row.insertCell().textContent = ce.axis[1][1].toFixed(2);
+      row.insertCell().textContent = ce.axis[1][2].toFixed(2);
+      row.insertCell().textContent = ce.axis[2][0].toFixed(2);
+      row.insertCell().textContent = ce.axis[2][1].toFixed(2);
+      row.insertCell().textContent = ce.axis[2][2].toFixed(2);
+      row.insertCell().textContent = ce.length;
+    });
   }
   displayCollisionTris(collisionTris) {
-    const table = this.tables.collisionTris
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.collisionTrisTable.rows.length > 1) {
+      this.collisionTrisTable.deleteRow(1);
     }
     collisionTris.slice(0, 10).forEach((ct, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = ct.plane.join(', ')
-      row.insertCell().textContent = ct.vertIndices.join(', ')
-      row.insertCell().textContent = ct.edgeIndices.join(', ')
-    })
+      const row = this.collisionTrisTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = ct.plane[0].toFixed(2);
+      row.insertCell().textContent = ct.plane[1].toFixed(2);
+      row.insertCell().textContent = ct.plane[2].toFixed(2);
+      row.insertCell().textContent = ct.plane[3].toFixed(2);
+      row.insertCell().textContent = ct.svec[0].toFixed(2);
+      row.insertCell().textContent = ct.svec[1].toFixed(2);
+      row.insertCell().textContent = ct.svec[2].toFixed(2);
+      row.insertCell().textContent = ct.svec[3].toFixed(2);
+      row.insertCell().textContent = ct.tvec[0].toFixed(2);
+      row.insertCell().textContent = ct.tvec[1].toFixed(2);
+      row.insertCell().textContent = ct.tvec[2].toFixed(2);
+      row.insertCell().textContent = ct.tvec[3].toFixed(2);
+      row.insertCell().textContent = ct.vertIndices[0];
+      row.insertCell().textContent = ct.vertIndices[1];
+      row.insertCell().textContent = ct.vertIndices[2];
+      row.insertCell().textContent = ct.edgeIndices[0];
+      row.insertCell().textContent = ct.edgeIndices[1];
+      row.insertCell().textContent = ct.edgeIndices[2];
+    });
   }
   displayCollisionBorders(collisionBorders) {
-    const table = this.tables.collisionBorders
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.collisionBordersTable.rows.length > 1) {
+      this.collisionBordersTable.deleteRow(1);
     }
     collisionBorders.slice(0, 10).forEach((cb, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = cb.distEq.join(', ')
-      row.insertCell().textContent = cb.zBase
-      row.insertCell().textContent = cb.zSlope
-      row.insertCell().textContent = cb.start
-      row.insertCell().textContent = cb.length
-    })
+      const row = this.collisionBordersTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = cb.distEq[0].toFixed(2);
+      row.insertCell().textContent = cb.distEq[1].toFixed(2);
+      row.insertCell().textContent = cb.distEq[2].toFixed(2);
+      row.insertCell().textContent = cb.zBase;
+      row.insertCell().textContent = cb.zSlope;
+      row.insertCell().textContent = cb.start;
+      row.insertCell().textContent = cb.length;
+    });
   }
   displayCollisionPartitions(collisionPartitions) {
-    const table = this.tables.collisionPartitions
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.collisionPartitionsTable.rows.length > 1) {
+      this.collisionPartitionsTable.deleteRow(1);
     }
     collisionPartitions.slice(0, 10).forEach((cp, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = cp.checkStamp
-      row.insertCell().textContent = cp.triCount
-      row.insertCell().textContent = cp.borderCount
-      row.insertCell().textContent = cp.firstTriIndex
-      row.insertCell().textContent = cp.firstBorderIndex
-    })
+      const row = this.collisionPartitionsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = cp.checkStamp;
+      row.insertCell().textContent = cp.triCount;
+      row.insertCell().textContent = cp.borderCount;
+      row.insertCell().textContent = cp.firstTriIndex;
+      row.insertCell().textContent = cp.firstBorderIndex;
+    });
   }
   displayCollisionAabbs(collisionAabbs) {
-    const table = this.tables.collisionAabbs
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.collisionAabbsTable.rows.length > 1) {
+      this.collisionAabbsTable.deleteRow(1);
     }
     collisionAabbs.slice(0, 10).forEach((ca, i) => {
-      const row = table.insertRow()
-      row.insertCell().textContent = i
-      row.insertCell().textContent = ca.origin.join(', ')
-      row.insertCell().textContent = ca.halfSize.join(', ')
-      row.insertCell().textContent = ca.materialIndex
-      row.insertCell().textContent = ca.childCount
-      row.insertCell().textContent = ca.u
-    })
+      const row = this.collisionAabbsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = ca.origin[0].toFixed(2);
+      row.insertCell().textContent = ca.origin[1].toFixed(2);
+      row.insertCell().textContent = ca.origin[2].toFixed(2);
+      row.insertCell().textContent = ca.halfSize[0].toFixed(2);
+      row.insertCell().textContent = ca.halfSize[1].toFixed(2);
+      row.insertCell().textContent = ca.halfSize[2].toFixed(2);
+      row.insertCell().textContent = ca.materialIndex;
+      row.insertCell().textContent = ca.childCount;
+      row.insertCell().textContent = ca.u;
+    });
   }
   displayModels(models) {
-    const table = this.tables.models;
-    // Clear all rows except the header
-    while (table.rows.length > 1) {
-      table.deleteRow(1);
+    while (this.modelsTable.rows.length > 1) {
+      this.modelsTable.deleteRow(1);
     }
-    // Display up to 10 models
     models.slice(0, 10).forEach((model, i) => {
-      const row = table.insertRow();
-      row.insertCell().textContent = i; // Index
-      row.insertCell().textContent = model.mins.join(', ');
-      row.insertCell().textContent = model.maxs.join(', ');
+      const row = this.modelsTable.insertRow();
+      row.insertCell().textContent = i;
+      row.insertCell().textContent = model.mins[0].toFixed(2);
+      row.insertCell().textContent = model.mins[1].toFixed(2);
+      row.insertCell().textContent = model.mins[2].toFixed(2);
+      row.insertCell().textContent = model.maxs[0].toFixed(2);
+      row.insertCell().textContent = model.maxs[1].toFixed(2);
+      row.insertCell().textContent = model.maxs[2].toFixed(2);
       row.insertCell().textContent = model.firstTriangle;
       row.insertCell().textContent = model.numTriangles;
       row.insertCell().textContent = model.firstSurface;
@@ -1313,23 +1403,65 @@ class D3DBSPViewer {
     });
   }
   displayVisibility(visibility) {
-    const table = this.tables.visibility
-    while (table.rows.length > 1) {
-      table.deleteRow(1)
+    while (this.visibilityTable.rows.length > 1) {
+      this.visibilityTable.deleteRow(1);
     }
     if (visibility.length > 0) {
-      const row = table.insertRow()
-      row.insertCell().textContent = '0'
-      row.insertCell().textContent = `Raw data (${visibility.length} bytes)`
+      const row = this.visibilityTable.insertRow();
+      row.insertCell().textContent = '0';
+      row.insertCell().textContent = `Raw data (${visibility.length} bytes)`;
     }
   }
   displayEntities(entities) {
-    const pre = this.tables.entities
-    pre.textContent = entities.length > 0 ? new TextDecoder().decode(entities.slice(0, 1000)) + (entities.length > 1000 ? '...' : '') : 'No data'
+    this.entitiesPre.textContent = entities.length > 0 ? new TextDecoder().decode(entities.slice(0, 1000)) + (entities.length > 1000 ? '...' : '') : 'No data';
+  }
+  displayLightmaps() {
+    this.lightmapsContainer.innerHTML = '';
+    if (this.parser.lightbytes.length === 0) {
+      this.lightmapsContainer.textContent = 'No lightmaps available.';
+      return;
+    }
+    const elements = this.parser.lightbytes.map(lightmap => {
+      const rCanvas = Canvas({ width: 512, height: 512 });
+      const gCanvas = Canvas({ width: 512, height: 512 });
+      const bCanvas = Canvas({ width: 512, height: 512 });
+      const shadowCanvas = Canvas({ width: 1024, height: 1024 });
+      let ctx = rCanvas.getContext('2d');
+      let imageData = ctx.createImageData(512, 512);
+      imageData.data.set(lightmap.r);
+      ctx.putImageData(imageData, 0, 0);
+      ctx = gCanvas.getContext('2d');
+      imageData = ctx.createImageData(512, 512);
+      imageData.data.set(lightmap.g);
+      ctx.putImageData(imageData, 0, 0);
+      ctx = bCanvas.getContext('2d');
+      imageData = ctx.createImageData(512, 512);
+      imageData.data.set(lightmap.b);
+      ctx.putImageData(imageData, 0, 0);
+      ctx = shadowCanvas.getContext('2d');
+      imageData = ctx.createImageData(1024, 1024);
+      for (let i = 0; i < lightmap.shadowMap.length; i++) {
+        const value = lightmap.shadowMap[i];
+        const offset = i * 4;
+        imageData.data[offset] = value;
+        imageData.data[offset + 1] = value;
+        imageData.data[offset + 2] = value;
+        imageData.data[offset + 3] = 255;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      this.lightmapCanvases.push({ r: rCanvas, g: gCanvas, b: bCanvas, shadow: shadowCanvas });
+      return Div({},
+        Span({}, 'Lightmap R: '), Br(), rCanvas, Br(),
+        Span({}, 'Lightmap G: '), Br(), gCanvas, Br(),
+        Span({}, 'Lightmap B: '), Br(), bCanvas, Br(),
+        Span({}, 'Shadow Map: '), Br(), shadowCanvas, Br()
+      );
+    });
+    this.lightmapsContainer.replaceChildren(...elements);
   }
 }
 function scrollToElement(id) {
-  document.getElementById(id).scrollIntoView({behavior: 'smooth'});
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
 }
 const lumpNames = [
   'materials', 'lightmaps', 'light grid hash', 'light grid values', 'planes',
@@ -1360,31 +1492,26 @@ class Renderer {
     this.renderer.render(this.scene, this.camera);
   }
   renderModel(parser) {
-    // Clear the existing scene
     while (this.scene.children.length > 0) {
       this.scene.remove(this.scene.children[0]);
     }
-    // Convert canvases to Three.js textures
     this.lightmapTextures = this.lightmapCanvases.map(canvas => new THREE.CanvasTexture(canvas.r));
-    // Process each TriangleSoup
     parser.triangleSoups.forEach((soup, index) => {
       const geometry = new THREE.BufferGeometry();
-      // Set vertex positions and UVs
       const positions = new Float32Array(soup.vertexCount * 3);
       const uvs = new Float32Array(soup.vertexCount * 2);
       for (let i = 0; i < soup.vertexCount; i++) {
         const vertex = parser.vertices[soup.firstVertex + i];
-        positions[i * 3    ] = vertex.xyz[0];
+        positions[i * 3] = vertex.xyz[0];
         positions[i * 3 + 1] = vertex.xyz[1];
         positions[i * 3 + 2] = vertex.xyz[2];
-        uvs[i * 2    ] =     vertex.lmapCoord[0];
+        uvs[i * 2] = vertex.lmapCoord[0];
         uvs[i * 2 + 1] = 1 - vertex.lmapCoord[1];
       }
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      geometry.setAttribute('uv'      , new THREE.BufferAttribute(uvs      , 2));
+      geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
       const indices = parser.drawIndexes.slice(soup.firstIndex, soup.firstIndex + soup.indexCount);
       geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-      // Create material with lightmap texture
       const lightmapIndex = soup.lightmapIndex;
       if (lightmapIndex >= 0 && lightmapIndex < this.lightmapTextures.length) {
         const texture = this.lightmapTextures[lightmapIndex];
@@ -1392,20 +1519,18 @@ class Renderer {
           map: texture,
           side: THREE.DoubleSide
         });
-        // Create and add mesh to the scene
         const mesh = new THREE.Mesh(geometry, material);
         this.scene.add(mesh);
       } else {
         console.warn(`Invalid lightmapIndex: ${lightmapIndex} for TriangleSoup ${index}`);
         const fallbackMaterial = new THREE.MeshBasicMaterial({
-          color: 0x808080, // Gray fallback
+          color: 0x808080,
           side: THREE.DoubleSide
         });
         const mesh = new THREE.Mesh(geometry, fallbackMaterial);
         this.scene.add(mesh);
       }
     });
-    // Adjust camera to fit the model (implement as needed)
     this.adjustCamera(parser.vertices);
   }
   adjustCamera(vertices) {
