@@ -42,19 +42,20 @@ class D3DBSPViewer {
     this.setupSearchFilter()
   }
   setupEventListeners() {
-    this.dropzone.addEventListener('dragover', e => e.preventDefault())
+    this.dropzone.addEventListener('dragover', e => e.preventDefault());
     this.dropzone.addEventListener('drop', e => {
-      e.preventDefault()
-      const file = e.dataTransfer.files[0]
-      const reader = new FileReader()
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      const reader = new FileReader();
       reader.onload = () => {
-        this.parser.parse(reader.result)
-        this.displayData()
-        this.renderer.renderModel(this.parser)
-        this.renderer.rotateBrushes(-90, 0, 90)
-      }
-      reader.readAsArrayBuffer(file)
-    })
+        this.parser.parse(reader.result);
+        this.displayData();
+        this.renderer.lightmapCanvases = this.lightmapCanvases;
+        this.renderer.renderModel(this.parser);
+        this.renderer.rotateBrushes(-90, 0, 90);
+      };
+      reader.readAsArrayBuffer(file);
+    });
   }
   setupGenerateButton() {
     const btn = document.getElementById('generateBtn')
@@ -111,6 +112,7 @@ class D3DBSPViewer {
     this.displayEntities(this.parser.entities);
     this.displayLightmaps();
   }
+  lightmapCanvases = [];
   // Display lightmaps as canvases
   displayLightmaps() {
     const container = document.getElementById('lightmapsContainer');
@@ -149,6 +151,8 @@ class D3DBSPViewer {
       const gCanvas = createCanvas(lightmap.g, 512, 512);
       const bCanvas = createCanvas(lightmap.b, 512, 512);
       const shadowCanvas = createCanvas(lightmap.shadowMap, 1024, 1024, true);
+
+      this.lightmapCanvases.push({r: rCanvas, g: gCanvas, b: bCanvas, shadow: shadowCanvas});
       // Style canvases (optional)
       [rCanvas, gCanvas, bCanvas, shadowCanvas].forEach(canvas => {
         canvas.style.margin = '10px';
