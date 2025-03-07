@@ -907,18 +907,7 @@ class D3DBSPViewer {
     const headers = ['Index'];
     if (structClass && structClass.members) {
       structClass.members.forEach(member => {
-        if (member.type.startsWith('vec')) {
-          const dim = parseInt(member.type.slice(3));
-          for (let i = 0; i < dim; i++) {
-            headers.push(`${member.name} ${['X', 'Y', 'Z', 'W'][i]}`);
-          }
-        } else if (member.isArray) {
-          for (let i = 0; i < member.count; i++) {
-            headers.push(`${member.name}[${i}]`);
-          }
-        } else {
-          headers.push(member.name);
-        }
+        headers.push(member.name);
       });
     } else {
       headers.push('Data');
@@ -1058,9 +1047,7 @@ class D3DBSPViewer {
     planes.slice(0, 10).forEach((plane, i) => {
       const row = this.planesTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = plane.normal[0].toFixed(2);
-      row.insertCell().textContent = plane.normal[1].toFixed(2);
-      row.insertCell().textContent = plane.normal[2].toFixed(2);
+      row.insertCell().textContent = plane.normal.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = plane.dist.toFixed(2);
     });
   }
@@ -1109,23 +1096,13 @@ class D3DBSPViewer {
     vertices.slice(0, 10).forEach((vertex, i) => {
       const row = this.verticesTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = vertex.xyz[0].toFixed(2);
-      row.insertCell().textContent = vertex.xyz[1].toFixed(2);
-      row.insertCell().textContent = vertex.xyz[2].toFixed(2);
-      row.insertCell().textContent = vertex.normal[0].toFixed(2);
-      row.insertCell().textContent = vertex.normal[1].toFixed(2);
-      row.insertCell().textContent = vertex.normal[2].toFixed(2);
+      row.insertCell().textContent = vertex.xyz.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = vertex.normal.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = vertex.color;
-      row.insertCell().textContent = vertex.texCoord[0].toFixed(2);
-      row.insertCell().textContent = vertex.texCoord[1].toFixed(2);
-      row.insertCell().textContent = vertex.lmapCoord[0].toFixed(2);
-      row.insertCell().textContent = vertex.lmapCoord[1].toFixed(2);
-      row.insertCell().textContent = vertex.tangent[0].toFixed(2);
-      row.insertCell().textContent = vertex.tangent[1].toFixed(2);
-      row.insertCell().textContent = vertex.tangent[2].toFixed(2);
-      row.insertCell().textContent = vertex.binormal[0].toFixed(2);
-      row.insertCell().textContent = vertex.binormal[1].toFixed(2);
-      row.insertCell().textContent = vertex.binormal[2].toFixed(2);
+      row.insertCell().textContent = vertex.texCoord.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = vertex.lmapCoord.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = vertex.tangent.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = vertex.binormal.map(v => v.toFixed(2)).join(', ');
     });
   }
   displayDrawIndexes(drawIndexes) {
@@ -1145,12 +1122,8 @@ class D3DBSPViewer {
     cullGroups.slice(0, 10).forEach((cg, i) => {
       const row = this.cullGroupsTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = cg.mins[0].toFixed(2);
-      row.insertCell().textContent = cg.mins[1].toFixed(2);
-      row.insertCell().textContent = cg.mins[2].toFixed(2);
-      row.insertCell().textContent = cg.maxs[0].toFixed(2);
-      row.insertCell().textContent = cg.maxs[1].toFixed(2);
-      row.insertCell().textContent = cg.maxs[2].toFixed(2);
+      row.insertCell().textContent = cg.mins.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = cg.maxs.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = cg.firstSurface;
       row.insertCell().textContent = cg.surfaceCount;
     });
@@ -1162,9 +1135,7 @@ class D3DBSPViewer {
     portalVerts.slice(0, 10).forEach((pv, i) => {
       const row = this.portalVertsTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = pv.xyz[0].toFixed(2);
-      row.insertCell().textContent = pv.xyz[1].toFixed(2);
-      row.insertCell().textContent = pv.xyz[2].toFixed(2);
+      row.insertCell().textContent = pv.xyz.map(v => v.toFixed(2)).join(', ');
     });
   }
   displayAabbTrees(aabbTrees) {
@@ -1186,12 +1157,8 @@ class D3DBSPViewer {
     cells.slice(0, 10).forEach((cell, i) => {
       const row = this.cellsTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = cell.mins[0].toFixed(2);
-      row.insertCell().textContent = cell.mins[1].toFixed(2);
-      row.insertCell().textContent = cell.mins[2].toFixed(2);
-      row.insertCell().textContent = cell.maxs[0].toFixed(2);
-      row.insertCell().textContent = cell.maxs[1].toFixed(2);
-      row.insertCell().textContent = cell.maxs[2].toFixed(2);
+      row.insertCell().textContent = cell.mins.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = cell.maxs.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = cell.aabbTreeIndex;
       row.insertCell().textContent = cell.firstPortal;
       row.insertCell().textContent = cell.portalCount;
@@ -1222,14 +1189,9 @@ class D3DBSPViewer {
       const row = this.nodesTable.insertRow();
       row.insertCell().textContent = i;
       row.insertCell().textContent = node.planeNum;
-      row.insertCell().textContent = node.children[0];
-      row.insertCell().textContent = node.children[1];
-      row.insertCell().textContent = node.mins[0];
-      row.insertCell().textContent = node.mins[1];
-      row.insertCell().textContent = node.mins[2];
-      row.insertCell().textContent = node.maxs[0];
-      row.insertCell().textContent = node.maxs[1];
-      row.insertCell().textContent = node.maxs[2];
+      row.insertCell().textContent = node.children.join(', ');
+      row.insertCell().textContent = node.mins.join(', ');
+      row.insertCell().textContent = node.maxs.join(', ');
     });
   }
   displayLeafs(leafs) {
@@ -1278,9 +1240,7 @@ class D3DBSPViewer {
       const row = this.collisionVertsTable.insertRow();
       row.insertCell().textContent = i;
       row.insertCell().textContent = cv.checkStamp;
-      row.insertCell().textContent = cv.xyz[0].toFixed(2);
-      row.insertCell().textContent = cv.xyz[1].toFixed(2);
-      row.insertCell().textContent = cv.xyz[2].toFixed(2);
+      row.insertCell().textContent = cv.xyz.map(v => v.toFixed(2)).join(', ');
     });
   }
   displayCollisionEdges(collisionEdges) {
@@ -1291,18 +1251,8 @@ class D3DBSPViewer {
       const row = this.collisionEdgesTable.insertRow();
       row.insertCell().textContent = i;
       row.insertCell().textContent = ce.checkStamp;
-      row.insertCell().textContent = ce.origin[0].toFixed(2);
-      row.insertCell().textContent = ce.origin[1].toFixed(2);
-      row.insertCell().textContent = ce.origin[2].toFixed(2);
-      row.insertCell().textContent = ce.axis[0][0].toFixed(2);
-      row.insertCell().textContent = ce.axis[0][1].toFixed(2);
-      row.insertCell().textContent = ce.axis[0][2].toFixed(2);
-      row.insertCell().textContent = ce.axis[1][0].toFixed(2);
-      row.insertCell().textContent = ce.axis[1][1].toFixed(2);
-      row.insertCell().textContent = ce.axis[1][2].toFixed(2);
-      row.insertCell().textContent = ce.axis[2][0].toFixed(2);
-      row.insertCell().textContent = ce.axis[2][1].toFixed(2);
-      row.insertCell().textContent = ce.axis[2][2].toFixed(2);
+      row.insertCell().textContent = ce.origin.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = ce.axis.map(a => a.map(v => v.toFixed(2)).join(', ')).join('; ');
       row.insertCell().textContent = ce.length;
     });
   }
@@ -1313,24 +1263,11 @@ class D3DBSPViewer {
     collisionTris.slice(0, 10).forEach((ct, i) => {
       const row = this.collisionTrisTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = ct.plane[0].toFixed(2);
-      row.insertCell().textContent = ct.plane[1].toFixed(2);
-      row.insertCell().textContent = ct.plane[2].toFixed(2);
-      row.insertCell().textContent = ct.plane[3].toFixed(2);
-      row.insertCell().textContent = ct.svec[0].toFixed(2);
-      row.insertCell().textContent = ct.svec[1].toFixed(2);
-      row.insertCell().textContent = ct.svec[2].toFixed(2);
-      row.insertCell().textContent = ct.svec[3].toFixed(2);
-      row.insertCell().textContent = ct.tvec[0].toFixed(2);
-      row.insertCell().textContent = ct.tvec[1].toFixed(2);
-      row.insertCell().textContent = ct.tvec[2].toFixed(2);
-      row.insertCell().textContent = ct.tvec[3].toFixed(2);
-      row.insertCell().textContent = ct.vertIndices[0];
-      row.insertCell().textContent = ct.vertIndices[1];
-      row.insertCell().textContent = ct.vertIndices[2];
-      row.insertCell().textContent = ct.edgeIndices[0];
-      row.insertCell().textContent = ct.edgeIndices[1];
-      row.insertCell().textContent = ct.edgeIndices[2];
+      row.insertCell().textContent = ct.plane.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = ct.svec.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = ct.tvec.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = ct.vertIndices.join(', ');
+      row.insertCell().textContent = ct.edgeIndices.join(', ');
     });
   }
   displayCollisionBorders(collisionBorders) {
@@ -1340,9 +1277,7 @@ class D3DBSPViewer {
     collisionBorders.slice(0, 10).forEach((cb, i) => {
       const row = this.collisionBordersTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = cb.distEq[0].toFixed(2);
-      row.insertCell().textContent = cb.distEq[1].toFixed(2);
-      row.insertCell().textContent = cb.distEq[2].toFixed(2);
+      row.insertCell().textContent = cb.distEq.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = cb.zBase;
       row.insertCell().textContent = cb.zSlope;
       row.insertCell().textContent = cb.start;
@@ -1370,12 +1305,8 @@ class D3DBSPViewer {
     collisionAabbs.slice(0, 10).forEach((ca, i) => {
       const row = this.collisionAabbsTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = ca.origin[0].toFixed(2);
-      row.insertCell().textContent = ca.origin[1].toFixed(2);
-      row.insertCell().textContent = ca.origin[2].toFixed(2);
-      row.insertCell().textContent = ca.halfSize[0].toFixed(2);
-      row.insertCell().textContent = ca.halfSize[1].toFixed(2);
-      row.insertCell().textContent = ca.halfSize[2].toFixed(2);
+      row.insertCell().textContent = ca.origin.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = ca.halfSize.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = ca.materialIndex;
       row.insertCell().textContent = ca.childCount;
       row.insertCell().textContent = ca.u;
@@ -1388,12 +1319,8 @@ class D3DBSPViewer {
     models.slice(0, 10).forEach((model, i) => {
       const row = this.modelsTable.insertRow();
       row.insertCell().textContent = i;
-      row.insertCell().textContent = model.mins[0].toFixed(2);
-      row.insertCell().textContent = model.mins[1].toFixed(2);
-      row.insertCell().textContent = model.mins[2].toFixed(2);
-      row.insertCell().textContent = model.maxs[0].toFixed(2);
-      row.insertCell().textContent = model.maxs[1].toFixed(2);
-      row.insertCell().textContent = model.maxs[2].toFixed(2);
+      row.insertCell().textContent = model.mins.map(v => v.toFixed(2)).join(', ');
+      row.insertCell().textContent = model.maxs.map(v => v.toFixed(2)).join(', ');
       row.insertCell().textContent = model.firstTriangle;
       row.insertCell().textContent = model.numTriangles;
       row.insertCell().textContent = model.firstSurface;
