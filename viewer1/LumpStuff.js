@@ -1,38 +1,17 @@
-// Vector Helpers
-function readVec2(view, offset) {
-  return [view.getFloat32(offset, true), view.getFloat32(offset + 4, true)];
+function doTimes(n, fn) {
+  const arr = new Array(n);
+  for (let i = 0; i < n; i++) {
+    arr[i] = fn(i);
+  }
+  return arr;
 }
-function writeVec2(view, offset, vec) {
-  view.setFloat32(offset, vec[0], true);
-  view.setFloat32(offset + 4, vec[1], true);
+function readVector(view, offset, n) {
+  return doTimes(n, i => view.getFloat32(offset + i * 4, true));
 }
-function readVec3(view, offset) {
-  return [
-    view.getFloat32(offset, true),
-    view.getFloat32(offset + 4, true),
-    view.getFloat32(offset + 8, true)
-  ];
+function writeVector(view, offset, vec) {
+  vec.forEach((v, i) => view.setFloat32(offset + i * 4, v, true));
 }
-function writeVec3(view, offset, vec) {
-  view.setFloat32(offset, vec[0], true);
-  view.setFloat32(offset + 4, vec[1], true);
-  view.setFloat32(offset + 8, vec[2], true);
-}
-function readVec4(view, offset) {
-  return [
-    view.getFloat32(offset, true),
-    view.getFloat32(offset + 4, true),
-    view.getFloat32(offset + 8, true),
-    view.getFloat32(offset + 12, true)
-  ];
-}
-function writeVec4(view, offset, vec) {
-  view.setFloat32(offset, vec[0], true);
-  view.setFloat32(offset + 4, vec[1], true);
-  view.setFloat32(offset + 8, vec[2], true);
-  view.setFloat32(offset + 12, vec[3], true);
-}
-// Base Struct Class
+// Simulate a C struct
 class Struct {
   static typeSizes = {
     'uint8': 1,
@@ -51,13 +30,13 @@ class Struct {
     let currentOffset = offset;
     for (const { name, type, length, size, count, isArray } of this.members) {
       if (type === 'vec2') {
-        instance[name] = readVec2(view, currentOffset);
+        instance[name] = readVector(view, currentOffset, 2);
         currentOffset += 8;
       } else if (type === 'vec3') {
-        instance[name] = readVec3(view, currentOffset);
+        instance[name] = readVector(view, currentOffset, 3);
         currentOffset += 12;
       } else if (type === 'vec4') {
-        instance[name] = readVec4(view, currentOffset);
+        instance[name] = readVector(view, currentOffset, 4);
         currentOffset += 16;
       } else if (type === 'string') {
         const bytes = new Uint8Array(view.buffer, currentOffset, length);
@@ -91,13 +70,13 @@ class Struct {
     let currentOffset = offset;
     for (const { name, type, length, size, count, isArray } of this.constructor.members) {
       if (type === 'vec2') {
-        writeVec2(view, currentOffset, this[name]);
+        writeVector(view, currentOffset, this[name]);
         currentOffset += 8;
       } else if (type === 'vec3') {
-        writeVec3(view, currentOffset, this[name]);
+        writeVector(view, currentOffset, this[name]);
         currentOffset += 12;
       } else if (type === 'vec4') {
-        writeVec4(view, currentOffset, this[name]);
+        writeVector(view, currentOffset, this[name]);
         currentOffset += 16;
       } else if (type === 'string') {
         const str = this[name] || '';
@@ -157,10 +136,7 @@ class Header extends Struct {
   }
   static read(view, offset) {
     const instance = super.read(view, offset);
-    instance.lumps = [];
-    for (let i = 0; i < 39; i++) {
-      instance.lumps.push(Lump.read(view, offset + 8 + i * Lump.SIZE));
-    }
+    instance.lumps = doTimes(39, i => Lump.read(view, offset + 8 + i * Lump.SIZE));
     return instance;
   }
   write(view, offset) {
