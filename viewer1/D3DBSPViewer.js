@@ -156,16 +156,21 @@ class D3DBSPViewer {
       });
       // Append canvases with labels
       container.appendChild(document.createTextNode('Lightmap R: '));
+      container.appendChild(document.createElement('br'));
       container.appendChild(rCanvas);
       container.appendChild(document.createElement('br'));
       container.appendChild(document.createTextNode('Lightmap G: '));
+      container.appendChild(document.createElement('br'));
       container.appendChild(gCanvas);
       container.appendChild(document.createElement('br'));
       container.appendChild(document.createTextNode('Lightmap B: '));
+      container.appendChild(document.createElement('br'));
       container.appendChild(bCanvas);
       container.appendChild(document.createElement('br'));
       container.appendChild(document.createTextNode('Shadow Map: '));
+      container.appendChild(document.createElement('br'));
       container.appendChild(shadowCanvas);
+      container.appendChild(document.createElement('br'));
     }
   }
   displayLumpsOverview() {

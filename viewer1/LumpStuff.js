@@ -164,10 +164,11 @@ class Material extends Struct {
 }
 class DiskGfxLightmap extends Struct {
   static members = [
-    { name: 'r', type: 'uint8array', size: 512 * 512 * 4 },
-    { name: 'g', type: 'uint8array', size: 512 * 512 * 4 },
-    { name: 'b', type: 'uint8array', size: 512 * 512 * 4 },
-    { name: 'shadowMap', type: 'uint8array', size: 1024 * 1024 }
+    //{name: 'rgb',         type: 'uint8array', size: 1024 * 1024 * 3},
+    {name: 'r',         type: 'uint8array', size: 1024 * 1024},
+    {name: 'g',         type: 'uint8array', size: 1024 * 1024},
+    {name: 'b',         type: 'uint8array', size: 1024 * 1024},
+    {name: 'shadowMap', type: 'uint8array', size: 1024 * 1024}
   ];
   constructor(r, g, b, shadowMap) {
     super();
