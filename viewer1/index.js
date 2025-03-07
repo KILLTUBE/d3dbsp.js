@@ -11,6 +11,16 @@ function readVector(view, offset, n) {
 function writeVector(view, offset, vec) {
   vec.forEach((v, i) => view.setFloat32(offset + i * 4, v, true));
 }
+function nice(_) {
+  if (_ instanceof Array) {
+    return _.map(nice).join(', ');
+  } else if (typeof _ === 'number') {
+    // No toFixed for integers
+    if (Math.floor(_) === _) return _;
+    return _.toFixed(2);
+  }
+  return _;
+}
 // Simulate a C struct
 class Struct {
   static typeSizes = {
@@ -1316,17 +1326,28 @@ class D3DBSPViewer {
     while (this.modelsTable.rows.length > 1) {
       this.modelsTable.deleteRow(1);
     }
-    models.slice(0, 10).forEach((model, i) => {
-      const row = this.modelsTable.insertRow();
-      row.insertCell().textContent = i;
-      row.insertCell().textContent = model.mins.map(v => v.toFixed(2)).join(', ');
-      row.insertCell().textContent = model.maxs.map(v => v.toFixed(2)).join(', ');
-      row.insertCell().textContent = model.firstTriangle;
-      row.insertCell().textContent = model.numTriangles;
-      row.insertCell().textContent = model.firstSurface;
-      row.insertCell().textContent = model.numSurfaces;
-      row.insertCell().textContent = model.firstBrush;
-      row.insertCell().textContent = model.numBrushes;
+    models.slice(0, 10).map((model, i) => {
+      // const row = this.modelsTable.insertRow();
+      // row.insertCell().textContent = i;
+      // row.insertCell().textContent = model.mins.map(v => v.toFixed(2)).join(', ');
+      // row.insertCell().textContent = model.maxs.map(v => v.toFixed(2)).join(', ');
+      // row.insertCell().textContent = model.firstTriangle;
+      // row.insertCell().textContent = model.numTriangles;
+      // row.insertCell().textContent = model.firstSurface;
+      // row.insertCell().textContent = model.numSurfaces;
+      // row.insertCell().textContent = model.firstBrush;
+      // row.insertCell().textContent = model.numBrushes;
+      // TODO do this to every display method!
+      this.modelsTable.append(
+        Tr(
+          {},
+          Td({}, i),
+          ...model.constructor.members.map(member => Td(
+            {},
+            nice(model[member.name]),
+          )),
+        ),
+      );
     });
   }
   displayVisibility(visibility) {
