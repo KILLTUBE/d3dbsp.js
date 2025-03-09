@@ -96,13 +96,12 @@
       4%, 60% { transform: translate(-2px, 0) skew(0deg); }
       62% { transform: translate(0, 0) skew(5deg); }
     }
-    /* Responsive sidebar adjustments */
     @media (max-width: 768px) {
       #sidebar {
         width: 100%;
         height: auto;
         max-height: 50vh;
-        display: none; /* Hidden by default on small screens */
+        display: none;
       }
       #sidebar.visible {
         display: block;
@@ -119,6 +118,7 @@
     <div id="header-info"></div>
     <div id="lumps-overview"></div>
     <div id="plane-info"></div>
+    <div id="lump-data"></div>
   </div>
   <script>
     // Utility functions
@@ -207,7 +207,20 @@
       static createDom() {
         const members = this?.displayMembers || this?.members || [{ name: 'Data' }];
         const headers = ['Index', ...members.map(m => m.name)];
-        return Table({ id: this.name }, Thead({}, Tr({}, ...headers.map(h => Th({}, h)))), Tbody({}));
+        const table = document.createElement('table');
+        table.id = this.name;
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        headers.forEach(header => {
+          const th = document.createElement('th');
+          th.textContent = header;
+          tr.appendChild(th);
+        });
+        thead.appendChild(tr);
+        const tbody = document.createElement('tbody');
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        return table;
       }
       static readFunction(view, lump) {
         const numElements = lump.length / this.SIZE;
@@ -217,15 +230,37 @@
         }
         return doTimes(numElements, i => this.read(view, lump.offset + i * this.SIZE));
       }
-      static display(data) {
-        const table = document.getElementById(this.name);
-        if (!table) return;
+      static display(data, tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) {
+          console.warn(`Table with id ${tableId} not found`);
+          return;
+        }
+        let tbody = table.querySelector("tbody");
+        if (!tbody) {
+          console.warn(`Table body not found in table ${tableId}, creating one`);
+          tbody = document.createElement('tbody');
+          table.appendChild(tbody);
+        }
         const members = this.displayMembers || this.members;
-        table.querySelector("tbody").replaceChildren(
-          ...data.slice(0, 10).map((item, i) =>
-            Tr({}, Td({}, i), ...members.map(m => Td({}, nice(item[m.name]))))
-          )
-        );
+        if (!data || data.length === 0) {
+          console.warn(`No data to display for ${this.name}`);
+          tbody.innerHTML = '<tr><td colspan="' + (members.length + 1) + '">No data available</td></tr>';
+          return;
+        }
+        tbody.innerHTML = ''; // Clear existing rows
+        data.slice(0, 10).forEach((item, i) => {
+          const row = document.createElement('tr');
+          const indexCell = document.createElement('td');
+          indexCell.textContent = i;
+          row.appendChild(indexCell);
+          members.forEach(m => {
+            const cell = document.createElement('td');
+            cell.textContent = nice(item[m.name]);
+            row.appendChild(cell);
+          });
+          tbody.appendChild(row);
+        });
       }
     }
     // Lump-specific classes
@@ -257,6 +292,7 @@
       planes: createLumpConfig(4, 'planes', Plane),
       nodes: createLumpConfig(25, 'nodes', DNode),
     };
+    // D3DBSPParser
     class D3DBSPParser {
       constructor() {
         this.header = new Header();
@@ -583,29 +619,33 @@
         this.controls.update();
       }
     }
+    // D3DBSPViewer
     class D3DBSPViewer {
       constructor(canvas) {
         this.parser = new D3DBSPParser();
         this.renderer = new Renderer(canvas);
-        // Select existing DOM elements
         this.sidebar = document.getElementById('sidebar');
         this.dropzone = document.getElementById('dropzone');
         this.controls = document.getElementById('controls');
         this.headerInfo = document.getElementById('header-info');
         this.lumpsOverview = document.getElementById('lumps-overview');
         this.planeInfo = document.getElementById('plane-info');
-        // Create control buttons and inputs
+        this.lumpData = document.getElementById('lump-data');
         this.toggleSidebarBtn = Button({ id: 'toggleSidebar' }, 'Toggle Sidebar');
         this.toggleBSPBtn = Button({ id: 'toggleBSPPlanes' }, 'Toggle BSP Planes');
         this.toggleWireframeBtn = Button({ id: 'toggleWireframeBtn' }, 'Toggle Wireframe');
         this.maxDepthInput = Input({ id: 'maxDepthInput', type: 'number', placeholder: 'Max Depth', value: '' });
-        // Append controls to the existing controls div
         this.controls.append(
           this.toggleSidebarBtn,
           this.toggleBSPBtn,
           this.toggleWireframeBtn,
           this.maxDepthInput
         );
+        // Initialize lump tables
+        this.tables = {};
+        Object.values(lumpConfig).forEach(config => {
+          this.tables[config.data] = config.struct.createDom();
+        });
         this.setupEventListeners();
       }
       loadArrayBuffer(ab) {
@@ -618,7 +658,6 @@
         this.renderer.renderBSPPlanes(this.parser);
       }
       setupEventListeners() {
-        // Drag-and-drop event listeners with visual feedback and status messages
         this.dropzone.addEventListener('dragover', e => {
           e.preventDefault();
           console.log('Dragover detected');
@@ -652,7 +691,6 @@
           };
           reader.readAsArrayBuffer(file);
         });
-        // Control button event listeners
         this.toggleSidebarBtn.addEventListener('click', () => {
           this.sidebar.classList.toggle('visible');
         });
@@ -690,9 +728,20 @@
         this.headerInfo.innerHTML = '';
         this.headerInfo.appendChild(table);
       }
+      displayLumpData() {
+        this.lumpData.innerHTML = '';
+        Object.values(lumpConfig).forEach(config => {
+          const data = this.parser[config.data];
+          const heading = H2({ id: `${config.data}Heading` }, config.name);
+          this.lumpData.appendChild(heading);
+          config.struct.display(data, config.struct.name);
+          this.lumpData.appendChild(this.tables[config.data]);
+        });
+      }
       displayData() {
         this.displayLumpsOverview();
         this.displayHeader(this.parser.header);
+        this.displayLumpData();
       }
     }
     const canvas = Canvas({});
