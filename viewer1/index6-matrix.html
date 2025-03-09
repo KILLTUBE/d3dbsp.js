@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>D3DBSP Viewer with Advanced BSP Features</title>
-  <!-- Three.js and OrbitControls imports -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
   <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
-  <!-- Use unpkg for TWEEN.js to ensure global TWEEN availability -->
   <script src="https://unpkg.com/@tweenjs/tween.js@18/dist/tween.umd.js"></script>
   <style>
     body { 
@@ -38,11 +36,20 @@
       z-index: 10;
     }
     #dropzone { 
+      position: relative;
       border: 2px dashed #0f0; 
-      padding: 10px; 
+      padding: 15px; 
+      min-height: 100px;
       text-align: center; 
       margin-bottom: 10px; 
       color: #0f0; 
+      font-size: 18px;
+      z-index: 11;
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+    #dropzone.highlight {
+      background-color: rgba(0, 255, 0, 0.2);
+      border-color: #00ff00;
     }
     #controls { 
       display: flex; 
@@ -55,6 +62,7 @@
       color: #000; 
       border: none; 
       padding: 5px 10px; 
+      cursor: pointer;
     }
     button:hover { 
       background: #0a0; 
@@ -88,56 +96,41 @@
       4%, 60% { transform: translate(-2px, 0) skew(0deg); }
       62% { transform: translate(0, 0) skew(5deg); }
     }
+    /* Responsive sidebar adjustments */
+    @media (max-width: 768px) {
+      #sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 50vh;
+        display: none; /* Hidden by default on small screens */
+      }
+      #sidebar.visible {
+        display: block;
+      }
+    }
   </style>
 </head>
 <body>
   <div id="sidebar">
     <div id="dropzone">Drop .d3dbsp file here</div>
-    <div id="controls"></div>
+    <div id="controls">
+      <!-- Controls will be populated dynamically -->
+    </div>
     <div id="header-info"></div>
     <div id="lumps-overview"></div>
     <div id="plane-info"></div>
   </div>
   <script>
-    // Verify TWEEN is available
-    if (typeof TWEEN === 'undefined') {
-      console.error('TWEEN.js failed to load or is not globally available.');
-      // Fallback: Define a minimal TWEEN object to prevent crashes (though animations won't work)
-      window.TWEEN = {
-        Tween: function() {
-          return {
-            to: function() { return this; },
-            easing: function() { return this; },
-            onUpdate: function() { return this; },
-            start: function() {},
-          };
-        },
-        Easing: {
-          Quadratic: {
-            InOut: function(k) { return k; }
-          }
-        },
-        update: function() {}
-      };
-    }
-
     // Utility functions
     function doTimes(n, fn) {
-      if (!Number.isInteger(n) || n < 0) {
-        console.error(`Invalid array length in doTimes: ${n}`);
-        return [];
-      }
       return Array.from({ length: n }, (_, i) => fn(i));
     }
-
     function readVector(view, offset, n) {
       return doTimes(n, i => view.getFloat32(offset + i * 4, true));
     }
-
     function writeVector(view, offset, vec) {
       vec.forEach((v, i) => view.setFloat32(offset + i * 4, v, true));
     }
-
     function nice(_) {
       if (_ instanceof Array) {
         return _.map(nice).join(', ');
@@ -146,14 +139,12 @@
       }
       return _;
     }
-
     function createLumpConfig(index, dataName, struct) {
       const config = { index, data: dataName, struct };
       config.name = config.struct.name;
       config.tableId = dataName + 'Table';
       return config;
     }
-
     const int32  = (name) => ({ name, type: 'int32' });
     const uint32 = (name) => ({ name, type: 'uint32' });
     const uint16 = (name) => ({ name, type: 'uint16' });
@@ -161,7 +152,6 @@
     const vec2   = (name) => ({ name, type: 'vec2' });
     const vec3   = (name) => ({ name, type: 'vec3' });
     const string = (name, length) => ({ name, type: 'string', length });
-
     // Struct class
     class Struct {
       static typeSizes = {
@@ -169,7 +159,6 @@
         'uint32': 4, 'int32': 4, 'float32': 4,
         'vec2': 8, 'vec3': 12, 'vec4': 16
       };
-
       static read(view, offset) {
         const instance = new this();
         let currentOffset = offset;
@@ -208,7 +197,6 @@
         }
         return instance;
       }
-
       static get SIZE() {
         return this.members.reduce((size, { type, length, isArray, count }) => {
           if (type === 'string') return size + length;
@@ -216,22 +204,19 @@
           return size + this.typeSizes[type];
         }, 0);
       }
-
       static createDom() {
         const members = this?.displayMembers || this?.members || [{ name: 'Data' }];
         const headers = ['Index', ...members.map(m => m.name)];
         return Table({ id: this.name }, Thead({}, Tr({}, ...headers.map(h => Th({}, h)))), Tbody({}));
       }
-
       static readFunction(view, lump) {
         const numElements = lump.length / this.SIZE;
         if (!Number.isInteger(numElements)) {
-          console.warn(`Lump length ${lump.length} is not a multiple of struct size ${this.SIZE} for ${this.name}. Lump data may be incomplete or corrupted.`);
+          console.warn(`Lump length ${lump.length} is not a multiple of struct size ${this.SIZE} for ${this.name}.`);
           return [];
         }
         return doTimes(numElements, i => this.read(view, lump.offset + i * this.SIZE));
       }
-
       static display(data) {
         const table = document.getElementById(this.name);
         if (!table) return;
@@ -243,12 +228,10 @@
         );
       }
     }
-
     // Lump-specific classes
     class Lump extends Struct {
       static members = [int32('length'), int32('offset')];
     }
-
     class Header extends Struct {
       static members = [string('ident', 4), int32('version')];
       static read(view, offset) {
@@ -257,12 +240,10 @@
         return instance;
       }
     }
-
     class Plane extends Struct {
       static members = [vec3('normal'), float('dist')];
       static name = 'planes';
     }
-
     class DNode extends Struct {
       static members = [
         { name: 'planeNum', type: 'int32' },
@@ -272,14 +253,10 @@
       ];
       static name = 'nodes';
     }
-
-    // Lump configurations
     const lumpConfig = {
       planes: createLumpConfig(4, 'planes', Plane),
       nodes: createLumpConfig(25, 'nodes', DNode),
     };
-
-    // D3DBSPParser
     class D3DBSPParser {
       constructor() {
         this.header = new Header();
@@ -289,7 +266,6 @@
           }
         });
       }
-
       parse(buffer) {
         const view = new DataView(buffer);
         this.readHeader(view);
@@ -298,7 +274,6 @@
           this[config.data] = config.struct.readFunction(view, lump);
         });
       }
-
       readHeader(view) {
         this.header = Header.read(view, 0);
         this.header.lumps.forEach((lump, i) => {
@@ -307,7 +282,6 @@
         });
       }
     }
-
     // JSX-like DOM helpers
     function genJsx(tagname) {
       return (props, ...children) => {
@@ -324,12 +298,10 @@
         return ret;
       };
     }
-
     const Div = genJsx("div");
     const Button = genJsx("button");
     const Canvas = genJsx("canvas");
     const H2 = genJsx("h2");
-    const Span = genJsx("span");
     const Table = genJsx("table");
     const Tr = genJsx("tr");
     const Td = genJsx("td");
@@ -337,9 +309,6 @@
     const Thead = genJsx("thead");
     const Tbody = genJsx("tbody");
     const Input = genJsx("input");
-    const Pre = genJsx("pre");
-    const Br = genJsx("br");
-
     // Renderer class
     class Renderer {
       constructor(canvas) {
@@ -366,7 +335,6 @@
         this.animate = this.animate.bind(this);
         this.animate();
       }
-
       animate() {
         requestAnimationFrame(this.animate);
         if (TWEEN && typeof TWEEN.update === 'function') {
@@ -376,17 +344,14 @@
         this.handleHover();
         this.renderer.render(this.scene, this.camera);
       }
-
       setupEventHandlers() {
         this.domElement.addEventListener('click', (event) => {
           const rect = this.domElement.getBoundingClientRect();
           this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
           this.raycaster.setFromCamera(this.mouse, this.camera);
           if (!this.bspPlanesGroup) return;
           const intersects = this.raycaster.intersectObjects(this.bspPlanesGroup.children);
-
           if (intersects.length > 0) {
             const selectedPlane = intersects[0].object;
             if (this.selectedPlane) {
@@ -412,30 +377,25 @@
             }
           }
         });
-
         this.domElement.addEventListener('mousemove', (event) => {
           const rect = this.domElement.getBoundingClientRect();
           this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         });
-
         window.addEventListener('resize', () => {
           this.camera.aspect = window.innerWidth / window.innerHeight;
           this.camera.updateProjectionMatrix();
           this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
       }
-
       handleHover() {
         if (!this.bspPlanesGroup) return;
         this.raycaster.setFromCamera(this.mouse, this.camera);
         const intersects = this.raycaster.intersectObjects(this.bspPlanesGroup.children);
-
         if (this.hoveredPlane && this.hoveredPlane !== this.selectedPlane) {
           const depth = this.bspPlanesGroup.children.indexOf(this.hoveredPlane) / this.bspPlanesGroup.children.length;
           this.hoveredPlane.material.color.setHSL(depth, 1, 0.5);
         }
-
         if (intersects.length > 0) {
           const hoveredPlane = intersects[0].object;
           if (hoveredPlane !== this.selectedPlane) {
@@ -448,7 +408,6 @@
           this.hoveredPlane = null;
         }
       }
-
       showPlaneInfo(planeIndex) {
         const nodeIndex = planeIndex;
         const node = this.parser.nodes[nodeIndex];
@@ -464,12 +423,10 @@
         `;
         this.planeInfo.style.display = 'block';
       }
-
       hidePlaneInfo() {
         this.planeInfo.style.display = 'none';
         this.planeInfo.innerHTML = '';
       }
-
       createLabel(text, position) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -486,42 +443,35 @@
         sprite.scale.set(200, 50, 1);
         return sprite;
       }
-
       zoomToPlane(plane) {
         const targetPosition = plane.position.clone();
         const normal = plane.userData.normal.clone();
         const offset = normal.multiplyScalar(1500);
         const newPosition = targetPosition.clone().add(offset);
-
         if (TWEEN && typeof TWEEN.Tween === 'function') {
           new TWEEN.Tween(this.camera.position)
             .to(newPosition, 1000)
             .easing(TWEEN.Easing.Quadratic.InOut)
             .onUpdate(() => this.controls.update())
             .start();
-
           new TWEEN.Tween(this.controls.target)
             .to(targetPosition, 1000)
             .easing(TWEEN.Easing.Quadratic.InOut)
             .onUpdate(() => this.controls.update())
             .start();
         } else {
-          // Fallback if TWEEN is not available
           this.camera.position.copy(newPosition);
           this.controls.target.copy(targetPosition);
           this.controls.update();
         }
       }
-
       highlightSubspaces(nodeIndex) {
         if (this.subspaceGroup) {
           this.scene.remove(this.subspaceGroup);
         }
         this.subspaceGroup = new THREE.Group();
-
         const node = this.parser.nodes[nodeIndex];
         const children = node.children;
-
         children.forEach((childIndex, i) => {
           if (childIndex >= 0 && childIndex < this.parser.nodes.length) {
             const childNode = this.parser.nodes[childIndex];
@@ -541,31 +491,25 @@
             this.subspaceGroup.add(box);
           }
         });
-
         this.scene.add(this.subspaceGroup);
       }
-
       renderBSPPlanes(parser) {
         this.parser = parser;
         if (this.bspPlanesGroup) this.scene.remove(this.bspPlanesGroup);
         if (this.bspNormalsGroup) this.scene.remove(this.bspNormalsGroup);
         if (this.bspLabelsGroup) this.scene.remove(this.bspLabelsGroup);
         if (this.subspaceGroup) this.scene.remove(this.subspaceGroup);
-
         const planesGroup = new THREE.Group();
         const normalsGroup = new THREE.Group();
         const labelsGroup = new THREE.Group();
         const maxDepth = Math.min(this.maxDepth, parser.nodes.length);
-
         parser.nodes.forEach((node, index) => {
           if (index >= maxDepth) return;
           const planeIndex = node.planeNum;
           if (planeIndex < 0 || planeIndex >= parser.planes.length) return;
           const plane = parser.planes[planeIndex];
-
           const normal = new THREE.Vector3(...plane.normal);
           const distance = plane.dist;
-
           const geometry = new THREE.PlaneGeometry(1000, 1000);
           const matrix = new THREE.Matrix4();
           matrix.makeRotationFromQuaternion(
@@ -575,13 +519,10 @@
             )
           );
           geometry.applyMatrix4(matrix);
-
           const position = normal.clone().multiplyScalar(distance);
           geometry.translate(position.x, position.y, position.z);
-
           const depth = Math.min(index / parser.nodes.length, 1);
           const color = new THREE.Color().setHSL(depth, 1, 0.5);
-
           const material = new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
@@ -589,11 +530,9 @@
             side: THREE.DoubleSide,
             wireframe: this.wireframeMode
           });
-
           const mesh = new THREE.Mesh(geometry, material);
           mesh.userData = { normal: normal };
           planesGroup.add(mesh);
-
           const normalLength = 500;
           const normalArrow = new THREE.ArrowHelper(
             normal,
@@ -604,11 +543,9 @@
             25
           );
           normalsGroup.add(normalArrow);
-
           const label = this.createLabel(`Node ${index}`, position);
           labelsGroup.add(label);
         });
-
         this.scene.add(planesGroup);
         this.scene.add(normalsGroup);
         this.scene.add(labelsGroup);
@@ -616,7 +553,6 @@
         this.bspNormalsGroup = normalsGroup;
         this.bspLabelsGroup = labelsGroup;
       }
-
       toggleBSPPlanes() {
         if (this.bspPlanesGroup && this.bspNormalsGroup && this.bspLabelsGroup) {
           const isVisible = !this.bspPlanesGroup.visible;
@@ -625,7 +561,6 @@
           this.bspLabelsGroup.visible = isVisible;
         }
       }
-
       toggleWireframe() {
         this.wireframeMode = !this.wireframeMode;
         if (this.bspPlanesGroup) {
@@ -635,53 +570,44 @@
           });
         }
       }
-
       setMaxDepth(value) {
         this.maxDepth = parseInt(value) || Infinity;
         this.renderBSPPlanes(this.parser);
       }
-
       renderModel(parser) {
         this.adjustCamera([]);
       }
-
       adjustCamera(vertices) {
         this.camera.position.set(0, 0, 5000);
         this.controls.target.set(0, 0, 0);
         this.controls.update();
       }
     }
-
-    // D3DBSPViewer
     class D3DBSPViewer {
       constructor(canvas) {
         this.parser = new D3DBSPParser();
         this.renderer = new Renderer(canvas);
-        this.dropzone = Div({ id: 'dropzone' }, 'Drop .d3dbsp file here');
+        // Select existing DOM elements
+        this.sidebar = document.getElementById('sidebar');
+        this.dropzone = document.getElementById('dropzone');
+        this.controls = document.getElementById('controls');
+        this.headerInfo = document.getElementById('header-info');
+        this.lumpsOverview = document.getElementById('lumps-overview');
+        this.planeInfo = document.getElementById('plane-info');
+        // Create control buttons and inputs
+        this.toggleSidebarBtn = Button({ id: 'toggleSidebar' }, 'Toggle Sidebar');
         this.toggleBSPBtn = Button({ id: 'toggleBSPPlanes' }, 'Toggle BSP Planes');
         this.toggleWireframeBtn = Button({ id: 'toggleWireframeBtn' }, 'Toggle Wireframe');
         this.maxDepthInput = Input({ id: 'maxDepthInput', type: 'number', placeholder: 'Max Depth', value: '' });
-        this.headerInfo = Div({ id: 'header-info' });
-        this.lumpsOverview = Div({ id: 'lumps-overview' });
-        this.planeInfo = Div({ id: 'plane-info' });
-        this.controls = Div({ id: 'controls' },
+        // Append controls to the existing controls div
+        this.controls.append(
+          this.toggleSidebarBtn,
           this.toggleBSPBtn,
           this.toggleWireframeBtn,
           this.maxDepthInput
         );
-        this.dom = Div({ id: 'sidebar' },
-          this.dropzone,
-          this.controls,
-          H2({}, 'Header'),
-          this.headerInfo,
-          H2({}, 'Lumps Overview'),
-          this.lumpsOverview,
-          H2({}, 'Plane Info'),
-          this.planeInfo
-        );
         this.setupEventListeners();
       }
-
       loadArrayBuffer(ab) {
         const start = performance.now();
         this.parser.parse(ab);
@@ -691,32 +617,55 @@
         this.renderer.renderModel(this.parser);
         this.renderer.renderBSPPlanes(this.parser);
       }
-
       setupEventListeners() {
-        this.dropzone.addEventListener('dragover', e => e.preventDefault());
+        // Drag-and-drop event listeners with visual feedback and status messages
+        this.dropzone.addEventListener('dragover', e => {
+          e.preventDefault();
+          console.log('Dragover detected');
+        });
+        this.dropzone.addEventListener('dragenter', e => {
+          e.preventDefault();
+          console.log('Dragenter detected');
+          this.dropzone.classList.add('highlight');
+        });
+        this.dropzone.addEventListener('dragleave', e => {
+          e.preventDefault();
+          console.log('Dragleave detected');
+          this.dropzone.classList.remove('highlight');
+        });
         this.dropzone.addEventListener('drop', e => {
           e.preventDefault();
+          console.log('Drop detected');
+          this.dropzone.classList.remove('highlight');
+          this.dropzone.textContent = 'Loading...';
           const file = e.dataTransfer.files[0];
           const reader = new FileReader();
           reader.onload = () => {
             this.loadArrayBuffer(reader.result);
+            this.dropzone.textContent = 'Drop .d3dbsp file here';
+          };
+          reader.onerror = () => {
+            this.dropzone.textContent = 'Error loading file';
+            setTimeout(() => {
+              this.dropzone.textContent = 'Drop .d3dbsp file here';
+            }, 2000);
           };
           reader.readAsArrayBuffer(file);
         });
-
+        // Control button event listeners
+        this.toggleSidebarBtn.addEventListener('click', () => {
+          this.sidebar.classList.toggle('visible');
+        });
         this.toggleBSPBtn.addEventListener('click', () => {
           this.renderer.toggleBSPPlanes();
         });
-
         this.toggleWireframeBtn.addEventListener('click', () => {
           this.renderer.toggleWireframe();
         });
-
         this.maxDepthInput.addEventListener('change', (e) => {
           this.renderer.setMaxDepth(e.target.value);
         });
       }
-
       displayLumpsOverview() {
         const table = Table({ id: 'lumpsTable' },
           Tr({}, Th({}, 'Name'), Th({}, 'Offset'), Th({}, 'Length')),
@@ -732,7 +681,6 @@
         this.lumpsOverview.innerHTML = '';
         this.lumpsOverview.appendChild(table);
       }
-
       displayHeader(header) {
         const table = Table({ id: 'headerTable' },
           Tr({}, Td({}, 'Field'), Td({}, 'Value')),
@@ -742,20 +690,14 @@
         this.headerInfo.innerHTML = '';
         this.headerInfo.appendChild(table);
       }
-
       displayData() {
         this.displayLumpsOverview();
         this.displayHeader(this.parser.header);
       }
     }
-
-    async function main() {
-      const canvas = Canvas({});
-      const viewer = new D3DBSPViewer(canvas);
-      document.body.prepend(canvas, viewer.dom);
-    }
-
-    window.onload = main;
+    const canvas = Canvas({});
+    const viewer = new D3DBSPViewer(canvas);
+    document.body.prepend(canvas);
   </script>
 </body>
 </html>
