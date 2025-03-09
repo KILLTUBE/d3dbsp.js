@@ -620,6 +620,7 @@ class D3DBSPViewer {
     this.lumpFilter = Input({ id: 'lumpFilter', type: 'text', placeholder: 'Filter lumps...' });
     this.generateBtn = Button({ id: 'generateBtn' }, 'Generate .d3dbsp');
     this.addEntityBtn = Button({ id: 'addEntityBtn' }, 'Add Entity');
+    this.fpsModeBtn = Button({ id: 'fpsModeBtn' }, 'Enter FPS Mode'); // New FPS mode button
     this.headerIdent = Span({ id: 'ident' });
     this.headerVersion = Span({ id: 'version' });
     this.headerTable = Table({ id: 'headerTable' },
@@ -633,11 +634,12 @@ class D3DBSPViewer {
     });
     this.dom = Div({},
       canvas,
-      Div({ id: 'controls' }, 
-        this.dropzone, 
-        this.lumpFilter, 
+      Div({ id: 'controls' },
+        this.dropzone,
+        this.lumpFilter,
         this.generateBtn,
-        this.addEntityBtn
+        this.addEntityBtn,
+        this.fpsModeBtn // Add FPS mode button to controls
       ),
       H2({ id: 'HeaderHeading' }, 'Header'),
       Div({}, 'Ident: ', this.headerIdent),
@@ -655,6 +657,7 @@ class D3DBSPViewer {
     this.setupGenerateButton();
     this.setupSearchFilter();
     this.setupEntityControls();
+    this.setupFPSControls(); // New setup for FPS controls
   }
   selectEntity(index) {
     const entity = this.parser.entities[index];
@@ -721,6 +724,18 @@ class D3DBSPViewer {
       this.displayData();
     });
   }
+  setupFPSControls() {
+    this.fpsModeBtn.addEventListener('click', () => {
+      this.renderer.toggleFPSMode(true);
+    });
+    // Handle pointer lock state changes to exit FPS mode
+    document.addEventListener('pointerlockchange', () => {
+      if (!document.pointerLockElement) {
+        this.renderer.toggleFPSMode(false);
+        this.fpsModeBtn.textContent = 'Enter FPS Mode';
+      }
+    });
+  }
   displayLumpsOverview() {
     this.lumpsTable.replaceChildren(
       Tr({}, Th({}, 'Name'), Th({}, 'Offset'), Th({}, 'Length'), Th({}, 'Action')),
@@ -763,12 +778,66 @@ class Renderer {
     this.camera = new THREE.PerspectiveCamera(75, 640 / 480, 0.1, 50000);
     this.renderer = new THREE.WebGLRenderer({ canvas });
     this.renderer.setSize(640, 480);
-    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
+    // Initialize both control types
+    this.orbitControls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+    this.orbitControls.enableDamping = true;
+    this.orbitControls.dampingFactor = 0.05;
+    this.pointerLockControls = new THREE.PointerLockControls(this.camera, this.renderer.domElement);
+    // Track mode
+    this.isFPSMode = false;
     this.currentMarker = null;
+    this.parser = null; // Will hold the D3DBSPParser instance
+    // Clock for delta time
+    this.clock = new THREE.Clock();
+    // Movement state
+    this.keys = {
+      forward: false, // W
+      backward: false, // S
+      left: false, // A
+      right: false, // D
+      up: false, // Space
+      down: false // Shift
+    };
+    this.moveSpeed = 1000; // Units per second
+    this.collisionRadius = 16; // Camera collision sphere radius
+    this.setupKeyboardControls();
     this.animate = this.animate.bind(this);
     this.animate();
+  }
+  setupKeyboardControls() {
+    document.addEventListener('keydown', (e) => {
+      switch (e.code) {
+        case 'KeyW': this.keys.forward = true; break;
+        case 'KeyS': this.keys.backward = true; break;
+        case 'KeyA': this.keys.left = true; break;
+        case 'KeyD': this.keys.right = true; break;
+        case 'Space': this.keys.up = true; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': this.keys.down = true; break;
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      switch (e.code) {
+        case 'KeyW': this.keys.forward = false; break;
+        case 'KeyS': this.keys.backward = false; break;
+        case 'KeyA': this.keys.left = false; break;
+        case 'KeyD': this.keys.right = false; break;
+        case 'Space': this.keys.up = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': this.keys.down = false; break;
+      }
+    });
+  }
+  toggleFPSMode(enable) {
+    if (enable && !this.isFPSMode) {
+      this.pointerLockControls.lock(); // Request pointer lock
+      this.orbitControls.enabled = false;
+      this.isFPSMode = true;
+    } else if (!enable && this.isFPSMode) {
+      this.pointerLockControls.unlock();
+      this.orbitControls.enabled = true;
+      this.isFPSMode = false;
+    }
   }
   addMarker(position) {
     if (this.currentMarker) {
@@ -804,16 +873,138 @@ class Renderer {
         position_three[1] + forward_three[1] * distance,
         position_three[2] + forward_three[2] * distance
       ];
-      this.controls.target.set(target_three[0], target_three[1], target_three[2]);
-      this.controls.update();
+      this.orbitControls.target.set(target_three[0], target_three[1], target_three[2]);
+      this.orbitControls.update();
+    }
+  }
+  isSolidBrush(brush) {
+    const material = this.parser.materials[brush.materialNum];
+    // Assuming CONTENTS_SOLID = 1, adjust based on .d3dbsp format
+    return material && (material.contentFlags & 0x1) !== 0;
+  }
+  traceSphere(start, end, radius, nodeIndex = 0) {
+    const traceResult = { fraction: 1, normal: new THREE.Vector3(), hit: false };
+    const traceRecursive = (start, end, nodeIdx) => {
+      if (nodeIdx < 0) { // Leaf node
+        const leaf = this.parser.leaves[~nodeIdx];
+        for (let i = 0; i < leaf.numLeafBrushes; i++) {
+          const brushIdx = this.parser.leafBrushes[leaf.firstLeafBrush + i].brush;
+          const brush = this.parser.brushes[brushIdx];
+          if (this.isSolidBrush(brush)) {
+            const intersection = this.checkRayBrushIntersection(start, end, brush, radius);
+            if (intersection && intersection.t < traceResult.fraction) {
+              traceResult.fraction = intersection.t;
+              traceResult.normal.copy(intersection.normal);
+              traceResult.hit = true;
+            }
+          }
+        }
+        return;
+      }
+      const node = this.parser.nodes[nodeIdx];
+      const plane = this.parser.planes[node.planeNum];
+      const normal = new THREE.Vector3(...transformBSPtoThree(plane.normal));
+      const dist = plane.dist;
+      const distStart = start.dot(normal) - dist;
+      const distEnd = end.dot(normal) - dist;
+      const epsilon = 0.001;
+      if (distStart > radius + epsilon && distEnd > radius + epsilon) {
+        traceRecursive(start, end, node.children[0]); // Front
+      } else if (distStart <= -radius - epsilon && distEnd <= -radius - epsilon) {
+        traceRecursive(start, end, node.children[1]); // Back
+      } else {
+        const dir = end.clone().sub(start);
+        const denom = normal.dot(dir);
+        let t = (distStart > 0) ? (distStart - radius) / -denom : (distStart + radius) / -denom;
+        t = Math.max(0, Math.min(1, t));
+        const mid = start.clone().lerp(end, t);
+        if (distStart > 0) {
+          traceRecursive(start, mid, node.children[0]);
+          if (traceResult.hit) end.copy(start.clone().lerp(end, traceResult.fraction));
+          traceRecursive(mid, end, node.children[1]);
+        } else {
+          traceRecursive(start, mid, node.children[1]);
+          if (traceResult.hit) end.copy(start.clone().lerp(end, traceResult.fraction));
+          traceRecursive(mid, end, node.children[0]);
+        }
+      }
+    };
+    traceRecursive(start.clone(), end.clone(), nodeIndex);
+    return traceResult;
+  }
+  checkRayBrushIntersection(start, end, brush, radius) {
+    let tEnter = -Infinity;
+    let tExit = Infinity;
+    let enterNormal = null;
+    const dir = end.clone().sub(start);
+    const dirLength = dir.length();
+    if (dirLength < 0.001) return null;
+    const dirNormalized = dir.clone().normalize();
+    for (let i = 0; i < brush.numSides; i++) {
+      const brushSide = this.parser.brushSides[brush.firstSide + i];
+      const plane = this.parser.planes[brushSide.plane];
+      const normal = new THREE.Vector3(...transformBSPtoThree(plane.normal));
+      const dist = plane.dist + radius;
+      const distStart = start.dot(normal) - dist;
+      const distEnd = end.dot(normal) - dist;
+      const denom = normal.dot(dirNormalized);
+      if (Math.abs(denom) < 0.001) {
+        if (distStart > 0) return null;
+        continue;
+      }
+      const t = -distStart / denom;
+      if (denom < 0) {
+        if (t > tEnter) {
+          tEnter = t;
+          enterNormal = normal;
+        }
+      } else {
+        if (t < tExit) tExit = t;
+      }
+    }
+    if (tEnter < tExit && tEnter >= 0 && tEnter <= 1) {
+      return { t: tEnter, normal: enterNormal };
+    }
+    return null;
+  }
+  updateMovement(delta) {
+    if (!this.isFPSMode || !this.parser) return;
+    const moveVector = new THREE.Vector3();
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    const up = new THREE.Vector3(0, 1, 0);
+    if (this.keys.forward) moveVector.add(forward);
+    if (this.keys.backward) moveVector.sub(forward);
+    if (this.keys.right) moveVector.add(right);
+    if (this.keys.left) moveVector.sub(right);
+    if (this.keys.up) moveVector.add(up);
+    if (this.keys.down) moveVector.sub(up);
+    if (moveVector.lengthSq() > 0) {
+      moveVector.normalize().multiplyScalar(this.moveSpeed * delta);
+      const currentPosition = this.camera.position.clone();
+      const desiredPosition = currentPosition.clone().add(moveVector);
+      const traceResult = this.traceSphere(currentPosition, desiredPosition, this.collisionRadius);
+      if (traceResult.hit) {
+        const hitPosition = currentPosition.lerp(desiredPosition, traceResult.fraction);
+        hitPosition.add(traceResult.normal.multiplyScalar(0.001));
+        this.camera.position.copy(hitPosition);
+      } else {
+        this.camera.position.copy(desiredPosition);
+      }
     }
   }
   animate() {
     requestAnimationFrame(this.animate);
-    this.controls.update();
+    const delta = this.clock.getDelta();
+    if (this.isFPSMode) {
+      this.updateMovement(delta);
+    } else {
+      this.orbitControls.update();
+    }
     this.renderer.render(this.scene, this.camera);
   }
   renderModel(parser) {
+    this.parser = parser;
     while (this.scene.children.length > 0) {
       this.scene.remove(this.scene.children[0]);
     }
@@ -864,8 +1055,8 @@ class Renderer {
     const center = [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2];
     const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
     this.camera.position.set(center[0], center[1], center[2] + size);
-    this.controls.target.set(center[0], center[1], center[2]);
-    this.controls.update();
+    this.orbitControls.target.set(center[0], center[1], center[2]);
+    this.orbitControls.update();
   }
 }
 async function main() {
