@@ -20,23 +20,19 @@ function nice(_) {
   return _;
 }
 // Lump configuration builder
-function createLumpConfig(index, dataName, options) {
-  const config = { index, data: dataName, ...options };
-  if (config.struct) {
-    const structName = config.struct.name;
-    config.name = structName;
-    config.tableId = dataName + 'Table';
-    config.displayMethod = config.displayMethod || 'table';
-    const struct = config.struct;
-    config.readFunction = config.readFunction || ((view, lump) =>
-      lump.length > 0
-        ? doTimes(lump.length / struct.SIZE, i => struct.read(view, lump.offset + i * struct.SIZE))
-        : []);
-    config.writeFunction = config.writeFunction || ((view, offset, data) =>
-      data.forEach((item, i) => item.write(view, offset + i * struct.SIZE)));
-  }
+function createLumpConfig(index, dataName, struct) {
+  const config = {index, data: dataName, struct};
+  config.name = config.struct.name;
+  config.tableId = dataName + 'Table';
   return config;
 }
+const int32  = (name        ) => ({name, type: 'int32'});
+const uint32 = (name        ) => ({name, type: 'uint32'});
+const uint16 = (name        ) => ({name, type: 'uint16'});
+const float  = (name        ) => ({name, type: 'float32'});
+const vec2   = (name        ) => ({name, type: 'vec2'});
+const vec3   = (name        ) => ({name, type: 'vec3'});
+const string = (name, length) => ({name, type: 'string', length});
 // Simulate a C struct
 class Struct {
   static typeSizes = {
@@ -128,18 +124,37 @@ class Struct {
             this.typeSizes[type]);
     }, 0);
   }
+  static createDom() {
+    const members = this?.displayMembers || this?.members || [{ name: 'Data' }];
+    const headers = ['Index', ...members.map(m => m.name)];
+    return Table({id: this.name}, Thead({}, Tr({}, ...headers.map(h => Th({}, h)))), Tbody({}));
+  }
+  static readFunction(view, lump) {
+    return doTimes(lump.length / this.SIZE, i => this.read(view, lump.offset + i * this.SIZE));
+  }
+  static writeFunction(view, offset, data) {
+    data.forEach((item, i) => item.write(view, offset + i * this.SIZE));
+  }
+  static display(data) {
+    const table = document.getElementById(this.name);
+    const members = this.displayMembers || this.members;
+    //const headers = ['Index', ...members.map(m => m.name)];
+    table.querySelector("tbody").replaceChildren(
+      //Tr({}, ...headers.map(h => Th({}, h))),
+      ...data.slice(0, 10).map((item, i) =>
+        Tr({},
+          Td({}, i),
+          ...members.map(m => Td({}, nice(item[m.name])))
+        )
+      )
+    );
+  }
 }
 class Lump extends Struct {
-  static members = [
-    { name: 'length', type: 'int32' },
-    { name: 'offset', type: 'int32' }
-  ];
+  static members = [int32('length'), int32('offset')];
 }
 class Header extends Struct {
-  static members = [
-    { name: 'ident', type: 'string', length: 4 },
-    { name: 'version', type: 'int32' }
-  ];
+  static members = [string('ident', 4), int32('version')];
   static read(view, offset) {
     const instance = super.read(view, offset);
     instance.lumps = doTimes(39, i => Lump.read(view, offset + 8 + i * Lump.SIZE));
@@ -156,11 +171,7 @@ class Header extends Struct {
   }
 }
 class Material extends Struct {
-  static members = [
-    { name: 'material', type: 'string', length: 64 },
-    { name: 'surfaceFlags', type: 'uint32' },
-    { name: 'contentFlags', type: 'uint32' }
-  ];
+  static members = [string('material', 64), uint32('surfaceFlags'), uint32('contentFlags')];
 }
 class DiskGfxLightmap extends Struct {
   static members = [
@@ -169,18 +180,55 @@ class DiskGfxLightmap extends Struct {
     { name: 'b', type: 'uint8array', size: 1024 * 1024 },
     { name: 'shadowMap', type: 'uint8array', size: 1024 * 1024 }
   ];
+  static display(data, viewer) {
+    const pre = document.getElementById(this.name);
+    pre.innerHTML = '';
+    if (data.length === 0) {
+      pre.textContent = 'No lightmaps available.';
+      return;
+    }
+    viewer.lightmapCanvases = data.map(lightmap => {
+      const canvases = {
+        r: Canvas({ width: 512, height: 512 }),
+        g: Canvas({ width: 512, height: 512 }),
+        b: Canvas({ width: 512, height: 512 }),
+        shadow: Canvas({ width: 1024, height: 1024 })
+      };
+      ['r', 'g', 'b'].forEach(channel => {
+        const ctx = canvases[channel].getContext('2d');
+        const imageData = ctx.createImageData(512, 512);
+        imageData.data.set(lightmap[channel]);
+        ctx.putImageData(imageData, 0, 0);
+      });
+      const ctx = canvases.shadow.getContext('2d');
+      const imageData = ctx.createImageData(1024, 1024);
+      for (let i = 0; i < lightmap.shadowMap.length; i++) {
+        const value = lightmap.shadowMap[i];
+        const offset = i * 4;
+        imageData.data[offset] = imageData.data[offset + 1] = imageData.data[offset + 2] = value;
+        imageData.data[offset + 3] = 255;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      return canvases;
+    });
+    pre.replaceChildren(
+      ...viewer.lightmapCanvases.map((c, i) => Div({},
+        Span({}, `Lightmap R Uint8Array(${data[i].r.length})`        ), Br(), c.r     , Br(),
+        Span({}, `Lightmap G Uint8Array(${data[i].g.length})`        ), Br(), c.g     , Br(),
+        Span({}, `Lightmap B Uint8Array(${data[i].b.length})`        ), Br(), c.b     , Br(),
+        Span({}, `Shadow Map Uint8Array(${data[i].shadowMap.length})`), Br(), c.shadow, Br(),
+      ))
+    );
+  }
+  static createDom() {
+    return Pre({id: this.name}, 'lightmaps');
+  }
 }
 class Plane extends Struct {
-  static members = [
-    { name: 'normal', type: 'vec3' },
-    { name: 'dist', type: 'float32' }
-  ];
+  static members = [vec3('normal'), float('dist')];
 }
 class BrushSide extends Struct {
-  static members = [
-    { name: 'plane', type: 'uint32' },
-    { name: 'materialNum', type: 'uint32' }
-  ];
+  static members = [uint32('plane'), uint32('materialNum')];
   static displayMembers = [
     { name: 'distance', type: 'float32' },
     { name: 'plane', type: 'uint32' },
@@ -193,10 +241,7 @@ class BrushSide extends Struct {
   }
 }
 class Brush extends Struct {
-  static members = [
-    { name: 'numSides', type: 'uint16' },
-    { name: 'materialNum', type: 'uint16' }
-  ];
+  static members = [uint16('numSides'),uint16('materialNum')];
 }
 class TriangleSoup extends Struct {
   static members = [
@@ -209,15 +254,24 @@ class TriangleSoup extends Struct {
   ];
 }
 class Vertex extends Struct {
-  static members = [
-    { name: 'xyz', type: 'vec3' },
-    { name: 'normal', type: 'vec3' },
-    { name: 'color', type: 'uint32' },
-    { name: 'texCoord', type: 'vec2' },
-    { name: 'lmapCoord', type: 'vec2' },
-    { name: 'tangent', type: 'vec3' },
-    { name: 'binormal', type: 'vec3' }
-  ];
+  static members = [vec3('xyz'), vec3('normal'), uint32('color'), vec2('texCoord'), vec2('lmapCoord'), vec3('tangent'), vec3('binormal')];
+}
+class Index extends Struct {
+  static members = [uint16('i')];
+  static readFunction = (view, lump) => new Uint16Array(view.buffer, lump.offset, lump.length / 2);
+  static writeFunction = (view, offset, data) => data.forEach((idx, i) => view.setUint16(offset + i * 2, idx, true));
+  static display(data) {
+    const table = document.getElementById(this.name);
+    data = [...data.slice(0, 10)];
+    table.querySelector("tbody").replaceChildren(
+      ...data.slice(0, 10).map((item, i) =>
+        Tr({},
+          Td({}, i),
+          Td({}, item),
+        )
+      )
+    );
+  }
 }
 class DiskGfxCullGroup extends Struct {
   static members = [
@@ -253,12 +307,7 @@ class DiskGfxCell extends Struct {
   ];
 }
 class DiskGfxPortal extends Struct {
-  static members = [
-    { name: 'planeIndex', type: 'uint32' },
-    { name: 'cellIndex', type: 'uint32' },
-    { name: 'firstPortalVertex', type: 'uint32' },
-    { name: 'portalVertexCount', type: 'uint32' }
-  ];
+  static members = [uint32('planeIndex'), uint32('cellIndex'), uint32('firstPortalVertex'), uint32('portalVertexCount')];
 }
 class DNode extends Struct {
   static members = [
@@ -353,53 +402,48 @@ class Model extends Struct {
     { name: 'numBrushes', type: 'uint32' }
   ];
 }
-// Centralized lump configuration
+class Visibility extends Struct {}
+class Entities {
+  static display(data) {
+    const pre = document.getElementById(this.name);
+    pre.textContent = new TextDecoder().decode(data);
+  }
+  static createDom = () => Pre({id: this.name});
+  static readFunction = (view, lump) => new Uint8Array(view.buffer, lump.offset, lump.length);
+  static writeFunction = (view, offset, data) => new Uint8Array(view.buffer, offset, data.length).set(data);
+}
+//class PathConnections extends Struct {}
+// visibility: createLumpConfig(36, 'visibility', { struct: Visibility }),
+// entities: createLumpConfig(37, 'entities', { struct: Entities }),
+// pathConnections: createLumpConfig(38, 'pathConnections', { struct: PathConnections }),
 const lumpConfig = {
-  materials: createLumpConfig(0, 'materials', { struct: Material }),
-  lightbytes: createLumpConfig(1, 'lightbytes', {
-    struct: DiskGfxLightmap,
-    displayMethod: 'custom',
-    formatter: item => [`Uint8Array(${item.r.length})`, `Uint8Array(${item.g.length})`, `Uint8Array(${item.b.length})`, `Uint8Array(${item.shadowMap.length})`]
-  }),
-  planes: createLumpConfig(4, 'planes', { struct: Plane }),
-  brushSides: createLumpConfig(5, 'brushSides', { struct: BrushSide }),
-  brushes: createLumpConfig(6, 'brushes', { struct: Brush }),
-  triangleSoups: createLumpConfig(7, 'triangleSoups', { struct: TriangleSoup }),
-  vertices: createLumpConfig(8, 'vertices', { struct: Vertex }),
-  drawIndexes: createLumpConfig(9, 'drawIndexes', {
-    displayMethod: 'custom',
-    formatter: item => [item],
-    readFunction: (view, lump) => lump.length > 0 ? new Uint16Array(view.buffer, lump.offset, lump.length / 2) : new Uint16Array(0),
-    writeFunction: (view, offset, data) => data.forEach((idx, i) => view.setUint16(offset + i * 2, idx, true))
-  }),
-  cullGroups: createLumpConfig(10, 'cullGroups', { struct: DiskGfxCullGroup }),
-  portalVertices: createLumpConfig(17, 'portalVertices', { struct: DiskGfxPortalVertex }),
-  aabbTrees: createLumpConfig(22, 'aabbTrees', { struct: DiskGfxAabbTree }),
-  cells: createLumpConfig(23, 'cells', { struct: DiskGfxCell }),
-  portals: createLumpConfig(24, 'portals', { struct: DiskGfxPortal }),
-  nodes: createLumpConfig(25, 'nodes', { struct: DNode }),
-  leavesAugust: createLumpConfig(26, 'leavesAugust', { struct: DLeaf }),
-  leafBrushes: createLumpConfig(27, 'leafBrushes', { struct: DLeafBrush }),
-  leafFaces: createLumpConfig(28, 'leafFaces', { struct: DLeafFace }),
-  collisionVertices: createLumpConfig(29, 'collisionVertices', { struct: DiskCollisionVertex }),
-  collisionEdges: createLumpConfig(30, 'collisionEdges', { struct: DiskCollisionEdge }),
-  collisionTriangles: createLumpConfig(31, 'collisionTriangles', { struct: DiskCollisionTriangle }),
-  collisionBorders: createLumpConfig(32, 'collisionBorders', { struct: DiskCollisionBorder }),
-  collisionPartitions: createLumpConfig(33, 'collisionPartitions', { struct: DiskCollisionPartition }),
-  collisionAabbTrees: createLumpConfig(34, 'collisionAabbTrees', { struct: DiskCollisionAabbTree }),
-  models: createLumpConfig(35, 'models', { struct: Model }),
-  visibility: createLumpConfig(36, 'visibility', {
-    displayMethod: 'raw',
-    readFunction: (view, lump) => lump.length > 0 ? new Uint8Array(view.buffer, lump.offset, lump.length) : new Uint8Array(0),
-    writeFunction: (view, offset, data) => new Uint8Array(view.buffer, offset, data.length).set(data)
-  }),
-  entities: createLumpConfig(37, 'entities', {
-    displayMethod: 'raw',
-    readFunction: (view, lump) => lump.length > 0 ? new Uint8Array(view.buffer, lump.offset, lump.length) : new Uint8Array(0),
-    writeFunction: (view, offset, data) => new Uint8Array(view.buffer, offset, data.length).set(data)
-  })
+  materials          : createLumpConfig( 0, 'materials'          , Material              ),
+  lightbytes         : createLumpConfig( 1, 'lightbytes'         , DiskGfxLightmap       ),
+  planes             : createLumpConfig( 4, 'planes'             , Plane                 ),
+  brushSides         : createLumpConfig( 5, 'brushSides'         , BrushSide             ),
+  brushes            : createLumpConfig( 6, 'brushes'            , Brush                 ),
+  triangleSoups      : createLumpConfig( 7, 'triangleSoups'      , TriangleSoup          ),
+  vertices           : createLumpConfig( 8, 'vertices'           , Vertex                ),
+  drawIndexes        : createLumpConfig( 9, 'drawIndexes'        , Index                 ),
+  cullGroups         : createLumpConfig(10, 'cullGroups'         , DiskGfxCullGroup      ),
+  portalVertices     : createLumpConfig(17, 'portalVertices'     , DiskGfxPortalVertex   ),
+  aabbTrees          : createLumpConfig(22, 'aabbTrees'          , DiskGfxAabbTree       ),
+  cells              : createLumpConfig(23, 'cells'              , DiskGfxCell           ),
+  portals            : createLumpConfig(24, 'portals'            , DiskGfxPortal         ),
+  nodes              : createLumpConfig(25, 'nodes'              , DNode                 ),
+  leaves             : createLumpConfig(26, 'leaves'             , DLeaf                 ),
+  leafBrushes        : createLumpConfig(27, 'leafBrushes'        , DLeafBrush            ),
+  leafFaces          : createLumpConfig(28, 'leafFaces'          , DLeafFace             ),
+  collisionVertices  : createLumpConfig(29, 'collisionVertices'  , DiskCollisionVertex   ),
+  collisionEdges     : createLumpConfig(30, 'collisionEdges'     , DiskCollisionEdge     ),
+  collisionTriangles : createLumpConfig(31, 'collisionTriangles' , DiskCollisionTriangle ),
+  collisionBorders   : createLumpConfig(32, 'collisionBorders'   , DiskCollisionBorder   ),
+  collisionPartitions: createLumpConfig(33, 'collisionPartitions', DiskCollisionPartition),
+  collisionAabbTrees : createLumpConfig(34, 'collisionAabbTrees' , DiskCollisionAabbTree ),
+  models             : createLumpConfig(35, 'models'             , Model                 ),
+  entities           : createLumpConfig(37, 'entities'           , Entities              ),
+  //visibility: createLumpConfig(36, 'visibility', Visibility),
 };
-// D3DBSPParser class
 class D3DBSPParser {
   constructor() {
     this.header = new Header();
@@ -414,9 +458,8 @@ class D3DBSPParser {
     const view = new DataView(buffer);
     this.readHeader(view);
     Object.values(lumpConfig).forEach(config => {
-      if (config.readFunction) {
-        this[config.data] = config.readFunction(view, this.header.lumps[config.index]);
-      }
+      const lump = this.header.lumps[config.index];
+      this[config.data] = config.struct.readFunction(view, lump);
     });
   }
   readHeader(view) {
@@ -479,10 +522,11 @@ const Table = genJsx("table");
 const Tr = genJsx("tr");
 const Td = genJsx("td");
 const Th = genJsx("th");
+const Thead = genJsx("thead");
+const Tbody = genJsx("tbody");
 const Input = genJsx("input");
 const Pre = genJsx("pre");
 const Br = genJsx("br");
-// D3DBSPViewer class
 class D3DBSPViewer {
   constructor(canvas) {
     this.parser = new D3DBSPParser();
@@ -500,19 +544,8 @@ class D3DBSPViewer {
       Tr({}, Td({}, 'Name'), Td({}, 'Offset'), Td({}, 'Length'), Td({}, 'Action'))
     );
     Object.values(lumpConfig).forEach(config => {
-      if (config.displayMethod !== 'none') {
-        if (config.displayMethod === 'table') {
-          this[config.tableId] = this.createTable(config.tableId, config.struct);
-        } else if (config.displayMethod === 'custom') {
-          this[config.tableId] = Table({ id: config.tableId }, Tr({}, Td({}, 'Index'), ...Array(config.data === 'drawIndexes' ? 1 : 4).fill().map(() => Td({}, 'Value'))));
-        } else if (config.displayMethod === 'raw') {
-          this[config.tableId] = config.data === 'visibility' ?
-            Table({ id: config.tableId }, Tr({}, Td({}, 'Index'), Td({}, 'Data'))) :
-            Pre({ id: config.tableId });
-        }
-      }
+      this[config.tableId] = config.struct.createDom();
     });
-    this.lightmapsContainer = Div({ id: 'lightmapsContainer' });
     this.dom = Div({},
       canvas,
       Div({ id: 'controls' }, this.dropzone, this.lumpFilter, this.generateBtn),
@@ -522,21 +555,15 @@ class D3DBSPViewer {
       this.headerTable,
       H2({ id: 'LumpsOverviewHeading' }, 'Lumps Overview'),
       this.lumpsTable,
-      ...Object.values(lumpConfig).filter(config => config.displayMethod !== 'none').map(config => [
+      ...Object.values(lumpConfig).map(config => [
         H2({ id: `${config.data}Heading` }, config.name),
         this[config.tableId]
       ]).flat(),
       H2({ id: 'LightmapsHeading' }, 'Lightmaps'),
-      this.lightmapsContainer
     );
     this.setupEventListeners();
     this.setupGenerateButton();
     this.setupSearchFilter();
-  }
-  createTable(id, structClass) {
-    const members = structClass?.displayMembers || structClass?.members || [{ name: 'Data' }];
-    const headers = ['Index', ...members.map(m => m.name)];
-    return Table({ id }, Tr({}, ...headers.map(h => Th({}, h))));
   }
   loadArrayBuffer(ab) {
     const start = performance.now();
@@ -580,36 +607,9 @@ class D3DBSPViewer {
       }
     });
   }
-  displayTable(tableId, data, structClass) {
-    const table = document.getElementById(tableId);
-    const members = structClass.displayMembers || structClass.members;
-    const headers = ['Index', ...members.map(m => m.name)];
-    table.replaceChildren(
-      Tr({}, ...headers.map(h => Th({}, h))),
-      ...data.slice(0, 10).map((item, i) =>
-        Tr({},
-          Td({}, i),
-          ...members.map(m => Td({}, nice(item[m.name])))
-        )
-      )
-    );
-  }
-  displayCustomTable(tableId, data, formatter) {
-    const table = document.getElementById(tableId);
-    const headers = ['Index', ...(data[0] && formatter(data[0]).length === 1 ? ['Value'] : ['Value 1', 'Value 2', 'Value 3', 'Value 4'])];
-    table.replaceChildren(
-      Tr({}, ...headers.map(h => Th({}, h))),
-      ...data.slice(0, 10).map((item, i) =>
-        Tr({},
-          Td({}, i),
-          ...formatter(item).map(value => Td({}, value))
-        )
-      )
-    );
-  }
   displayLumpsOverview() {
     this.lumpsTable.replaceChildren(
-      Tr({}, Td({}, 'Name'), Td({}, 'Offset'), Td({}, 'Length'), Td({}, 'Action')),
+      Tr({}, Th({}, 'Name'), Th({}, 'Offset'), Th({}, 'Length'), Th({}, 'Action')),
       ...Object.values(lumpConfig).map(config => {
         const lump = this.parser.header.lumps[config.index];
         const headingId = `${config.data}Heading`;
@@ -633,89 +633,16 @@ class D3DBSPViewer {
       Tr({}, Td({}, 'Version'), Td({}, header.version)),
     );
   }
-  displayVisibility(visibility) {
-    const table = document.getElementById('visibilityTable');
-    if (!table) {
-      console.warn("Visibility table not found.");
-      return;
-    }
-    const rows = visibility.length > 0
-      ? [
-          Tr({}, Td({}, 'Index'), Td({}, 'Data')),
-          Tr({}, Td({}, '0'), Td({}, `Raw data (${visibility.length} bytes)`))
-        ]
-      : [Tr({}, Td({}, 'Index'), Td({}, 'Data'))];
-    table.replaceChildren(...rows);
-  }
-  displayEntities(entities) {
-    console.log("todo displayEntities");
-    return;
-    const pre = document.getElementById('entitiesTable');
-    pre.textContent = entities.length > 0 ? new TextDecoder().decode(entities.slice(0, 1000)) + (entities.length > 1000 ? '...' : '') : 'No data';
-  }
-  displayLightmaps() {
-    this.lightmapsContainer.innerHTML = '';
-    const lightbytes = this.parser.lightbytes;
-    if (lightbytes.length === 0) {
-      this.lightmapsContainer.textContent = 'No lightmaps available.';
-      return;
-    }
-    this.lightmapCanvases = lightbytes.map(lightmap => {
-      const canvases = {
-        r: Canvas({ width: 512, height: 512 }),
-        g: Canvas({ width: 512, height: 512 }),
-        b: Canvas({ width: 512, height: 512 }),
-        shadow: Canvas({ width: 1024, height: 1024 })
-      };
-      ['r', 'g', 'b'].forEach(channel => {
-        const ctx = canvases[channel].getContext('2d');
-        const imageData = ctx.createImageData(512, 512);
-        imageData.data.set(lightmap[channel]);
-        ctx.putImageData(imageData, 0, 0);
-      });
-      const ctx = canvases.shadow.getContext('2d');
-      const imageData = ctx.createImageData(1024, 1024);
-      for (let i = 0; i < lightmap.shadowMap.length; i++) {
-        const value = lightmap.shadowMap[i];
-        const offset = i * 4;
-        imageData.data[offset] = imageData.data[offset + 1] = imageData.data[offset + 2] = value;
-        imageData.data[offset + 3] = 255;
-      }
-      ctx.putImageData(imageData, 0, 0);
-      return canvases;
-    });
-    this.lightmapsContainer.replaceChildren(
-      ...this.lightmapCanvases.map(c => Div({},
-        Span({}, 'Lightmap R: '), Br(), c.r, Br(),
-        Span({}, 'Lightmap G: '), Br(), c.g, Br(),
-        Span({}, 'Lightmap B: '), Br(), c.b, Br(),
-        Span({}, 'Shadow Map: '), Br(), c.shadow, Br()
-      ))
-    );
-  }
   displayData() {
     this.displayLumpsOverview();
     this.displayHeader(this.parser.header);
     Object.values(lumpConfig).forEach(config => {
-      if (config.displayMethod !== 'none') {
-        const data = config.data === 'displayIndexes' ? Array.from(this.parser[config.data]) : this.parser[config.data];
-        if (config.displayMethod === 'table') {
-          this.displayTable(config.tableId, data, config.struct);
-        } else if (config.displayMethod === 'custom') {
-          this.displayCustomTable(config.tableId, data, config.formatter);
-        } else if (config.displayMethod === 'raw') {
-          if (config.data === 'visibility') this.displayVisibility(data);
-          if (config.data === 'entities') this.displayEntities(data);
-        }
-      }
+      const data = this.parser[config.data];
+      config.struct.display(data, this);
     });
-    this.displayLightmaps();
   }
 }
-function scrollToElement(id) {
-  document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
-}
-// Renderer class (assuming THREE.js is available)
+const scrollToElement = id => document.getElementById(id).scrollIntoView({behavior: 'smooth'});
 class Renderer {
   constructor(canvas) {
     this.scene = new THREE.Scene();
