@@ -20,6 +20,19 @@ function nice(_) {
   }
   return _;
 }
+function parseVector(str) {
+  return str.split(' ').map(Number);
+}
+// Coordinate system transformation function
+function transformBSPtoThree(bspVector) {
+  // BSP: X (forward), Y (right), Z (up)
+  // THREE.js: X (right), Y (up), Z (out)
+  return [
+    bspVector[1],  // BSP Y (right) -> THREE.js X (right)
+    bspVector[2],  // BSP Z (up) -> THREE.js Y (up)
+    -bspVector[0]  // -BSP X (forward) -> THREE.js Z (out, negated to align with -Z)
+  ];
+}
 // Lump configuration builder
 function createLumpConfig(index, dataName, struct) {
   const config = {index, data: dataName, struct};
@@ -235,12 +248,12 @@ class BrushSide extends Struct {
   ];
   static read(view, offset) {
     const instance = super.read(view, offset);
-    instance.distance = view.getFloat32(offset, true); // Overlaps plane, format quirk
+    instance.distance = view.getFloat32(offset, true);
     return instance;
   }
 }
 class Brush extends Struct {
-  static members = [uint16('numSides'),uint16('materialNum')];
+  static members = [uint16('numSides'), uint16('materialNum')];
 }
 class TriangleSoup extends Struct {
   static members = [
@@ -409,10 +422,18 @@ class Entities {
     parsedEntities.forEach((entity, index) => {
       const summary = document.createElement('summary');
       summary.textContent = `Entity ${index}: ${entity.classname || 'Unknown'}`;
+      summary.style.cursor = 'pointer';
+      summary.onclick = () => {
+        viewer.selectEntity(index);
+      };
       const deleteBtn = Button({}, 'Delete');
       deleteBtn.onclick = () => {
         viewer.parser.entities.splice(index, 1);
         viewer.displayData();
+      };
+      const selectBtn = Button({}, 'Select');
+      selectBtn.onclick = () => {
+        viewer.selectEntity(index);
       };
       const details = document.createElement('details');
       details.appendChild(summary);
@@ -424,6 +445,7 @@ class Entities {
       });
       details.appendChild(propList);
       details.appendChild(deleteBtn);
+      details.appendChild(selectBtn);
       container.appendChild(details);
     });
   }
@@ -634,6 +656,17 @@ class D3DBSPViewer {
     this.setupSearchFilter();
     this.setupEntityControls();
   }
+  selectEntity(index) {
+    const entity = this.parser.entities[index];
+    if (entity.origin) {
+      const position_bsp = parseVector(entity.origin);
+      const position_three = transformBSPtoThree(position_bsp);
+      this.renderer.addMarker(position_three);
+      if (entity.classname === "mp_global_intermission") {
+        this.renderer.setCameraToEntity(entity);
+      }
+    }
+  }
   loadArrayBuffer(ab) {
     const start = performance.now();
     this.parser.parse(ab);
@@ -642,7 +675,12 @@ class D3DBSPViewer {
     this.displayData();
     this.renderer.lightmapCanvases = this.lightmapCanvases;
     this.renderer.renderModel(this.parser);
-    this.renderer.rotateBrushes(-90, 0, 90);
+    const intermissionEntity = this.parser.entities.find(e => e.classname === "mp_global_intermission");
+    if (intermissionEntity) {
+      this.renderer.setCameraToEntity(intermissionEntity);
+    } else {
+      this.renderer.adjustCamera(this.parser.vertices);
+    }
   }
   setupEventListeners() {
     this.dropzone.addEventListener('dragover', e => e.preventDefault());
@@ -678,7 +716,7 @@ class D3DBSPViewer {
   }
   setupEntityControls() {
     this.addEntityBtn.addEventListener('click', () => {
-      const newEntity = { classname: "new_entity" }; // Default entity
+      const newEntity = { classname: "new_entity" };
       this.parser.entities.push(newEntity);
       this.displayData();
     });
@@ -728,8 +766,47 @@ class Renderer {
     this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
+    this.currentMarker = null;
     this.animate = this.animate.bind(this);
     this.animate();
+  }
+  addMarker(position) {
+    if (this.currentMarker) {
+      this.scene.remove(this.currentMarker);
+    }
+    const geometry = new THREE.SphereGeometry(10, 16, 16);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    this.currentMarker = new THREE.Mesh(geometry, material);
+    this.currentMarker.position.set(position[0], position[1], position[2]);
+    this.scene.add(this.currentMarker);
+  }
+  setCameraToEntity(entity) {
+    if (entity.origin && entity.angles) {
+      // Parse position and angles
+      const position_bsp = parseVector(entity.origin);
+      const angles = parseVector(entity.angles).map(a => a * Math.PI / 180); // Convert degrees to radians
+      const [yaw, pitch, roll] = angles;
+      // Compute forward direction in BSP coordinates (Z-up, X-forward)
+      const forward_bsp = [
+        Math.cos(pitch) * Math.cos(yaw), // X (forward)
+        Math.cos(pitch) * Math.sin(yaw), // Y (right)
+        Math.sin(pitch)                  // Z (up)
+      ];
+      // Transform to THREE.js coordinates
+      const position_three = transformBSPtoThree(position_bsp);
+      const forward_three = transformBSPtoThree(forward_bsp);
+      // Set camera position
+      this.camera.position.set(position_three[0], position_three[1], position_three[2]);
+      // Set the target for OrbitControls (small distance ahead)
+      const distance = 1;
+      const target_three = [
+        position_three[0] + forward_three[0] * distance,
+        position_three[1] + forward_three[1] * distance,
+        position_three[2] + forward_three[2] * distance
+      ];
+      this.controls.target.set(target_three[0], target_three[1], target_three[2]);
+      this.controls.update();
+    }
   }
   animate() {
     requestAnimationFrame(this.animate);
@@ -747,9 +824,11 @@ class Renderer {
       const uvs = new Float32Array(soup.vertexCount * 2);
       for (let i = 0; i < soup.vertexCount; i++) {
         const vertex = parser.vertices[soup.firstVertex + i];
-        positions[i * 3] = vertex.xyz[0];
-        positions[i * 3 + 1] = vertex.xyz[1];
-        positions[i * 3 + 2] = vertex.xyz[2];
+        const pos_bsp = vertex.xyz;
+        const pos_three = transformBSPtoThree(pos_bsp);
+        positions[i * 3] = pos_three[0];
+        positions[i * 3 + 1] = pos_three[1];
+        positions[i * 3 + 2] = pos_three[2];
         uvs[i * 2] = vertex.lmapCoord[0];
         uvs[i * 2 + 1] = 1 - vertex.lmapCoord[1];
       }
@@ -773,25 +852,20 @@ class Renderer {
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
     vertices.forEach(vertex => {
-      const pos = vertex.xyz;
-      minX = Math.min(minX, pos[0]);
-      minY = Math.min(minY, pos[1]);
-      minZ = Math.min(minZ, pos[2]);
-      maxX = Math.max(maxX, pos[0]);
-      maxY = Math.max(maxY, pos[1]);
-      maxZ = Math.max(maxZ, pos[2]);
+      const pos_bsp = vertex.xyz;
+      const pos_three = transformBSPtoThree(pos_bsp);
+      minX = Math.min(minX, pos_three[0]);
+      minY = Math.min(minY, pos_three[1]);
+      minZ = Math.min(minZ, pos_three[2]);
+      maxX = Math.max(maxX, pos_three[0]);
+      maxY = Math.max(maxY, pos_three[1]);
+      maxZ = Math.max(maxZ, pos_three[2]);
     });
     const center = [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2];
     const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
     this.camera.position.set(center[0], center[1], center[2] + size);
     this.controls.target.set(center[0], center[1], center[2]);
     this.controls.update();
-  }
-  rotateBrushes(x, y, z) {
-    const rotation = new THREE.Euler(x * Math.PI / 180, y * Math.PI / 180, z * Math.PI / 180);
-    this.scene.children.forEach(mesh => {
-      mesh.rotation.copy(rotation);
-    });
   }
 }
 async function main() {
