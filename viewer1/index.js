@@ -538,6 +538,16 @@ class D3DBSPViewer {
     const headers = ['Index', ...members.map(m => m.name)];
     return Table({ id }, Tr({}, ...headers.map(h => Th({}, h))));
   }
+  loadArrayBuffer(ab) {
+    const start = performance.now();
+    this.parser.parse(ab);
+    const end = performance.now();
+    console.log(`Parsing took ${end - start} ms`);
+    this.displayData();
+    this.renderer.lightmapCanvases = this.lightmapCanvases;
+    this.renderer.renderModel(this.parser);
+    this.renderer.rotateBrushes(-90, 0, 90);
+  }
   setupEventListeners() {
     this.dropzone.addEventListener('dragover', e => e.preventDefault());
     this.dropzone.addEventListener('drop', e => {
@@ -545,14 +555,7 @@ class D3DBSPViewer {
       const file = e.dataTransfer.files[0];
       const reader = new FileReader();
       reader.onload = () => {
-        const start = performance.now();
-        this.parser.parse(reader.result);
-        const end = performance.now();
-        console.log(`Parsing took ${end - start} ms`);
-        this.displayData();
-        this.renderer.lightmapCanvases = this.lightmapCanvases;
-        this.renderer.renderModel(this.parser);
-        this.renderer.rotateBrushes(-90, 0, 90);
+        this.loadArrayBuffer(reader.result);
       };
       reader.readAsArrayBuffer(file);
     });
@@ -788,7 +791,13 @@ class Renderer {
     });
   }
 }
-const canvas = Canvas({ width: 640, height: 480 });
-const viewer = new D3DBSPViewer(canvas);
-document.body.prepend(canvas, viewer.dom);
-window.viewer = viewer;
+async function main() {
+  const canvas = Canvas({width: 640, height: 480});
+  const viewer = new D3DBSPViewer(canvas);
+  document.body.prepend(canvas, viewer.dom);
+  const res = await fetch("base_first.d3dbsp");
+  const ab = await res.arrayBuffer();
+  viewer.loadArrayBuffer(ab);
+  Object.assign(window, {canvas, viewer, res, ab});
+}
+window.onload = main;
