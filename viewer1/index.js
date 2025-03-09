@@ -1,3 +1,4 @@
+// Utility Functions
 function doTimes(n, fn) {
   const arr = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -138,9 +139,7 @@ class Struct {
   static display(data) {
     const table = document.getElementById(this.name);
     const members = this.displayMembers || this.members;
-    //const headers = ['Index', ...members.map(m => m.name)];
     table.querySelector("tbody").replaceChildren(
-      //Tr({}, ...headers.map(h => Th({}, h))),
       ...data.slice(0, 10).map((item, i) =>
         Tr({},
           Td({}, i),
@@ -404,18 +403,71 @@ class Model extends Struct {
 }
 class Visibility extends Struct {}
 class Entities {
-  static display(data) {
-    const pre = document.getElementById(this.name);
-    pre.textContent = new TextDecoder().decode(data);
+  static display(parsedEntities, viewer) {
+    const container = document.getElementById(this.name);
+    container.innerHTML = '';
+    parsedEntities.forEach((entity, index) => {
+      const summary = document.createElement('summary');
+      summary.textContent = `Entity ${index}: ${entity.classname || 'Unknown'}`;
+      const deleteBtn = Button({}, 'Delete');
+      deleteBtn.onclick = () => {
+        viewer.parser.entities.splice(index, 1);
+        viewer.displayData();
+      };
+      const details = document.createElement('details');
+      details.appendChild(summary);
+      const propList = document.createElement('ul');
+      Object.entries(entity).forEach(([key, value]) => {
+        const li = document.createElement('li');
+        li.textContent = `${key}: ${value}`;
+        propList.appendChild(li);
+      });
+      details.appendChild(propList);
+      details.appendChild(deleteBtn);
+      container.appendChild(details);
+    });
   }
-  static createDom = () => Pre({id: this.name});
-  static readFunction = (view, lump) => new Uint8Array(view.buffer, lump.offset, lump.length);
-  static writeFunction = (view, offset, data) => new Uint8Array(view.buffer, offset, data.length).set(data);
+  static createDom() {
+    return Div({id: this.name});
+  }
+  static readFunction(view, lump) {
+    const entityString = new TextDecoder().decode(new Uint8Array(view.buffer, lump.offset, lump.length));
+    return this.parse(entityString);
+  }
+  static writeFunction(view, offset, data) {
+    const entityString = this.stringify(data);
+    const encoded = new TextEncoder().encode(entityString);
+    new Uint8Array(view.buffer, offset, encoded.length + 1).set(encoded);
+    console.log("todo set 0");
+  }
+  static parse(entityString) {
+    const entities = [];
+    const entityRegex = /\{([^}]*)\}/g; // Matches content between { and }
+    let match;
+    while ((match = entityRegex.exec(entityString)) !== null) {
+      const entityContent = match[1].trim();
+      const lines = entityContent.split('\n').filter(line => line.trim() !== '');
+      const entity = {};
+      lines.forEach(line => {
+        const kvMatch = line.match(/"([^"]+)"\s+"([^"]+)"/); // Matches "key" "value"
+        if (kvMatch) {
+          const key = kvMatch[1];
+          const value = kvMatch[2];
+          entity[key] = value;
+        }
+      });
+      entities.push(entity);
+    }
+    return entities;
+  }
+  static stringify(parsedEntities) {
+    return parsedEntities.map(entity => {
+      const lines = Object.entries(entity).map(([key, value]) => `"${key}" "${value}"`);
+      return `{\n${lines.join('\n')}\n}`;
+    }).join('\n') + '\n';
+  }
 }
-//class PathConnections extends Struct {}
-// visibility: createLumpConfig(36, 'visibility', { struct: Visibility }),
-// entities: createLumpConfig(37, 'entities', { struct: Entities }),
-// pathConnections: createLumpConfig(38, 'pathConnections', { struct: PathConnections }),
+// Lump Configurations
 const lumpConfig = {
   materials          : createLumpConfig( 0, 'materials'          , Material              ),
   lightbytes         : createLumpConfig( 1, 'lightbytes'         , DiskGfxLightmap       ),
@@ -442,7 +494,6 @@ const lumpConfig = {
   collisionAabbTrees : createLumpConfig(34, 'collisionAabbTrees' , DiskCollisionAabbTree ),
   models             : createLumpConfig(35, 'models'             , Model                 ),
   entities           : createLumpConfig(37, 'entities'           , Entities              ),
-  //visibility: createLumpConfig(36, 'visibility', Visibility),
 };
 class D3DBSPParser {
   constructor() {
@@ -450,7 +501,7 @@ class D3DBSPParser {
     Object.values(lumpConfig).forEach(config => {
       if (config.data) {
         this[config.data] = config.data === 'drawIndexes' ? new Uint16Array(0) :
-                           config.data === 'visibility' || config.data === 'entities' ? new Uint8Array(0) : [];
+                           config.data === 'visibility' || config.data === 'entities' ? [] : [];
       }
     });
   }
@@ -470,34 +521,44 @@ class D3DBSPParser {
     });
   }
   write() {
+    // Calculate sizes of all lumps
     const sizes = Array(39).fill(0);
     Object.values(lumpConfig).forEach(config => {
-      if (config.data) {
-        const data = this[config.data];
-        if (config.struct) sizes[config.index] = data.length * config.struct.SIZE;
-        else if (config.data === 'drawIndexes') sizes[config.index] = data.length * 2;
-        else sizes[config.index] = data.length;
+      if (config.data && this[config.data].length > 0) {
+        if (config.data === 'entities') {
+          const entityString = Entities.stringify(this.entities) + 1; // +1 for null terminator
+          const encoded = new TextEncoder().encode(entityString);
+          sizes[config.index] = encoded.length;
+        } else if (config.data === 'drawIndexes') {
+          sizes[config.index] = this[config.data].length * 2;
+        } else if (config.struct.SIZE) {
+          sizes[config.index] = this[config.data].length * config.struct.SIZE;
+        }
       }
     });
+    // Allocate buffer
     const totalSize = Header.SIZE + sizes.reduce((a, b) => a + b, 0);
     const buffer = new ArrayBuffer(totalSize);
     const view = new DataView(buffer);
+    // Set lump offsets and lengths
     let offset = Header.SIZE;
     this.header.lumps.forEach((lump, i) => {
       lump.length = sizes[i];
       lump.offset = sizes[i] > 0 ? offset : 0;
       offset += sizes[i];
     });
+    // Write header
     this.header.write(view, 0);
+    // Write each lump using its writeFunction
     Object.values(lumpConfig).forEach(config => {
-      if (config.writeFunction && this.header.lumps[config.index].length > 0) {
-        config.writeFunction(view, this.header.lumps[config.index].offset, this[config.data]);
+      if (config.data && this.header.lumps[config.index].length > 0) {
+        config.struct.writeFunction(view, this.header.lumps[config.index].offset, this[config.data]);
       }
     });
     return buffer;
   }
 }
-// JSX-like DOM helpers
+// JSX-like DOM Helpers
 function genJsx(tagname) {
   return (props, ...children) => {
     const ret = document.createElement(tagname);
@@ -513,6 +574,7 @@ function genJsx(tagname) {
     return ret;
   };
 }
+const A = genJsx("a");
 const Div = genJsx("div");
 const Button = genJsx("button");
 const Canvas = genJsx("canvas");
@@ -535,6 +597,7 @@ class D3DBSPViewer {
     this.dropzone = Div({ id: 'dropzone' }, 'Drop .d3dbsp file here');
     this.lumpFilter = Input({ id: 'lumpFilter', type: 'text', placeholder: 'Filter lumps...' });
     this.generateBtn = Button({ id: 'generateBtn' }, 'Generate .d3dbsp');
+    this.addEntityBtn = Button({ id: 'addEntityBtn' }, 'Add Entity');
     this.headerIdent = Span({ id: 'ident' });
     this.headerVersion = Span({ id: 'version' });
     this.headerTable = Table({ id: 'headerTable' },
@@ -548,7 +611,12 @@ class D3DBSPViewer {
     });
     this.dom = Div({},
       canvas,
-      Div({ id: 'controls' }, this.dropzone, this.lumpFilter, this.generateBtn),
+      Div({ id: 'controls' }, 
+        this.dropzone, 
+        this.lumpFilter, 
+        this.generateBtn,
+        this.addEntityBtn
+      ),
       H2({ id: 'HeaderHeading' }, 'Header'),
       Div({}, 'Ident: ', this.headerIdent),
       Div({}, 'Version: ', this.headerVersion),
@@ -564,6 +632,7 @@ class D3DBSPViewer {
     this.setupEventListeners();
     this.setupGenerateButton();
     this.setupSearchFilter();
+    this.setupEntityControls();
   }
   loadArrayBuffer(ab) {
     const start = performance.now();
@@ -605,6 +674,13 @@ class D3DBSPViewer {
         const name = rows[i].children[0].textContent.toLowerCase();
         rows[i].style.display = name.includes(filter) ? '' : 'none';
       }
+    });
+  }
+  setupEntityControls() {
+    this.addEntityBtn.addEventListener('click', () => {
+      const newEntity = { classname: "new_entity" }; // Default entity
+      this.parser.entities.push(newEntity);
+      this.displayData();
     });
   }
   displayLumpsOverview() {
